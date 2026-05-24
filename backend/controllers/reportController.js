@@ -1,0 +1,221 @@
+const db = require('../config/db');
+
+// 1. Customer Information Report (Customer, Barangay, Customer_Num)
+exports.getCustomerInformationReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT c.Cust_LName, c.Cust_FName, c.Cust_Type, b.Barangay_Name, b.Purok,
+                   GROUP_CONCAT(cn.Contact_Num SEPARATOR ', ') AS Contact_Numbers
+            FROM CUSTOMER c
+            JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            GROUP BY c.Cust_ID
+            ORDER BY c.Cust_LName ASC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Customer Information Report", details: error.message });
+    }
+};
+
+// 2. Transaction Status Report (Trans_record, Trans_detail, Work_detail, Employee, Customer)
+exports.getTransactionStatusReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT tr.Trans_Date, c.Cust_LName AS Customer_LName, c.Cust_FName AS Customer_FName,
+                   MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
+                   MAX(CASE WHEN wd.Role_ID = 'D' THEN e.Emp_LName END) AS Driver,
+                   td.Quantity, td.Selling_Price, td.Promo, tr.Remarks
+            FROM TRANS_RECORD tr
+            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
+            JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
+            JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
+            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
+            GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName, td.Quantity, td.Selling_Price, td.Promo, tr.Remarks
+            ORDER BY tr.Trans_Date DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Transaction Status Report", details: error.message });
+    }
+};
+
+// 3. Service Sales Report (Service_detail, Trans_detail)
+exports.getServiceSalesReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT sd.Serv_Name, sd.Price, 
+                   SUM(td.Quantity) AS Amount_Sold,
+                   SUM(td.Quantity * td.Selling_Price) AS Total_Sales
+            FROM SERVICE_DETAIL sd
+            JOIN TRANS_DETAIL td ON sd.Serv_ID = td.Serv_ID
+            GROUP BY sd.Serv_ID, sd.Serv_Name, sd.Price
+            ORDER BY Total_Sales DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Service Sales Report", details: error.message });
+    }
+};
+
+// 4. Delivery/Work Report (Work_detail, Trans_record, Customer, Barangay)
+exports.getDeliveryWorkReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT e.Emp_FName AS Employee_Name, wd.Role_ID AS Assigned_As, tr.Trans_ID,
+                   b.Barangay_Name AS Delivery_Area, tr.Trans_Date
+            FROM EMPLOYEE e
+            JOIN WORK_DETAIL wd ON e.Emp_ID = wd.Emp_ID
+            JOIN TRANS_RECORD tr ON wd.Trans_ID = tr.Trans_ID
+            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
+            JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
+            ORDER BY tr.Trans_ID ASC, tr.Trans_Date DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Delivery/Work Report", details: error.message });
+    }
+};
+
+// 5. Active Inventory Tracking Report (Customer, Customer_num)
+exports.getActiveInventoryReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT c.Cust_LName, c.Cust_FName, c.Borrowed_Cont,
+                   GROUP_CONCAT(cn.Contact_Num SEPARATOR ', ') AS Contact_Numbers
+            FROM CUSTOMER c
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            WHERE c.Borrowed_Cont > 0
+            GROUP BY c.Cust_ID
+            ORDER BY c.Borrowed_Cont DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Active Inventory Tracking Report", details: error.message });
+    }
+};
+
+// 6. Unpaid Collections List (Trans_record, Trans_detail, Customer, Customer_num)
+exports.getUnpaidCollections = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT tr.Trans_Date, c.Cust_LName, c.Cust_FName,
+                   GROUP_CONCAT(cn.Contact_Num SEPARATOR ', ') AS Contact_Numbers,
+                   SUM(td.Quantity * td.Selling_Price) AS Unpaid_Amount
+            FROM TRANS_RECORD tr
+            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
+            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            WHERE tr.Remarks = 'Unpaid'
+            GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName
+            ORDER BY tr.Trans_Date DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Unpaid Collections List", details: error.message });
+    }
+};
+
+// 7. Employee Information Report (Employee, Employee_num)
+exports.getEmployeeInformationReport = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT e.Emp_LName, e.Emp_FName, e.Role_ID,
+                   GROUP_CONCAT(en.Contact_Num SEPARATOR ', ') AS Contact_Numbers
+            FROM EMPLOYEE e
+            LEFT JOIN EMPLOYEE_NUM en ON e.Emp_ID = en.Emp_ID
+            GROUP BY e.Emp_ID
+            ORDER BY e.Emp_LName ASC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Employee Information Report", details: error.message });
+    }
+};
+
+// 8. Employee Performance Summary (Employee, Job_role, Work_detail, Trans_detail, Service_detail)
+exports.getEmployeePerformanceSummary = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT e.Emp_LName, e.Emp_FName, jr.Role_ID, 
+                   COUNT(DISTINCT wd.Trans_ID) AS Jobs_Completed,
+                   SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) AS Total_Gallons,
+                   jr.Quota AS Target,
+                   CASE 
+                     WHEN SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) >= jr.Quota THEN 'GOAL REACHED' 
+                     ELSE 'IN PROGRESS' 
+                   END AS Status
+            FROM EMPLOYEE e
+            JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
+            JOIN WORK_DETAIL wd ON e.Emp_ID = wd.Emp_ID
+            JOIN TRANS_DETAIL td ON wd.Trans_ID = td.Trans_ID
+            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
+            GROUP BY e.Emp_ID, e.Emp_LName, e.Emp_FName, jr.Role_ID, jr.Quota
+            ORDER BY Jobs_Completed DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Employee Performance Summary", details: error.message });
+    }
+};
+
+// 9. Payroll & Incentive Breakdown (Employee, Payroll_record, Job_role)
+exports.getPayrollIncentiveBreakdown = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT e.Emp_LName, e.Emp_FName, jr.Salary, pr.Pay_Period, pr.Total_Incentive, pr.Net_Pay
+            FROM EMPLOYEE e
+            JOIN PAYROLL_RECORD pr ON e.Emp_ID = pr.Emp_ID
+            JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
+            ORDER BY pr.Pay_Period DESC, e.Emp_LName ASC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Payroll & Incentive Breakdown", details: error.message });
+    }
+};
+
+// 10. Daily Revenue Summary Report
+exports.getDailyRevenueSummaryReport = async (req, res) => {
+    const reportDate = req.query.date || '2026-04-14';
+    try {
+        const queryText = `
+            SELECT 
+                DATE(tr.Trans_Date) AS Report_Date,
+                COUNT(DISTINCT tr.Trans_ID) AS Total_Customers_Served,
+                SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) AS Total_Gallons_Sold,
+                SUM(td.Quantity * td.Selling_Price) AS Gross_Revenue,
+                SUM(CASE WHEN tr.Remarks = 'Paid' THEN (td.Quantity * td.Selling_Price) ELSE 0 END) AS Cash_Collected,
+                SUM(CASE WHEN tr.Remarks = 'Unpaid' THEN (td.Quantity * td.Selling_Price) ELSE 0 END) AS Outstanding_Credit
+            FROM TRANS_RECORD tr
+            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
+            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
+            WHERE DATE(tr.Trans_Date) = ?
+            GROUP BY DATE(tr.Trans_Date)
+        `;
+        const [rows] = await db.query(queryText, [reportDate]);
+        if (rows.length > 0) {
+            res.json(rows[0]);
+        } else {
+            res.json({
+                Report_Date: reportDate,
+                Total_Customers_Served: 0,
+                Total_Gallons_Sold: 0,
+                Gross_Revenue: 0,
+                Cash_Collected: 0,
+                Outstanding_Credit: 0
+            });
+        }
+    } catch (error) {
+        res.status(500).json({ error: "Failed to generate Daily Revenue Summary Report", details: error.message });
+    }
+};

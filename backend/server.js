@@ -13,12 +13,15 @@ const barangayRoutes = require('./routes/barangayRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const employeeRoutes = require('./routes/employeeRoutes'); 
 const transactionRoutes = require('./routes/transactionRoutes');
+const reportRoutes = require('./routes/reportRoutes');
 
 // Link Route Paths to Application
 app.use('/api/barangay', barangayRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/employee', employeeRoutes);
-app.use('/api/transaction', transactionRoutes); 
+app.use('/api/transaction', transactionRoutes);
+app.use('/api/report', reportRoutes); 
+
 
 // Test Base Route Route
 app.get('/api/test-db', async (req, res) => {
