@@ -10,9 +10,13 @@ app.use(express.json());
 
 // Import Route Files
 const barangayRoutes = require('./routes/barangayRoutes');
+const customerRoutes = require('./routes/customerRoutes');
+const employeeRoutes = require('./routes/employeeRoutes'); 
 
-// Use Route Files Files
+// Link Route Paths to Application
 app.use('/api/barangay', barangayRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/employee', employeeRoutes); 
 
 // Test Base Route Route
 app.get('/api/test-db', async (req, res) => {
