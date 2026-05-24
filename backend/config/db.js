@@ -1,11 +1,11 @@
 const mysql = require('mysql2');
-require('dotenv').config();
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: 'localhost',
+    port: 3307,             // <-- Add this line (Change to 3307 if XAMPP shows 3307)
+    user: 'root',
+    password: '',           
+    database: 'db_ceestem', // Ensure this matches your phpMyAdmin spelling exactly
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0

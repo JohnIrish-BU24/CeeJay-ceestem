@@ -1,23 +1,27 @@
 const express = require('express');
 const cors = require('cors');
-const db = require('./config/db');
 require('dotenv').config();
 
 const app = express();
 
 // Middleware
 app.use(cors());
-app.use(express.json()); // Parses incoming JSON bodies
+app.use(express.json());
 
-// Test Database Connection Route
+// Import Route Files
+const barangayRoutes = require('./routes/barangayRoutes');
+
+// Use Route Files Files
+app.use('/api/barangay', barangayRoutes);
+
+// Test Base Route Route
 app.get('/api/test-db', async (req, res) => {
+    const db = require('./config/db');
     try {
-        // Simple test query to check connection to your XAMPP database
         const [rows] = await db.query('SELECT 1 + 1 AS result');
         res.json({ message: "Connected to db_ceestem successfully!", data: rows });
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Database connection failed", details: error.message });
+        res.status(500).json({ error: "Database failed", details: error.message });
     }
 });
 
