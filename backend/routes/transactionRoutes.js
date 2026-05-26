@@ -5,5 +5,7 @@ const transactionController = require('../controllers/transactionController');
 // Map endpoints to controller operations
 router.get('/', transactionController.getTransactionHistory);
 router.post('/', transactionController.createTransaction);
+router.delete('/:id', transactionController.deleteTransaction);
+router.put('/:id', transactionController.updateTransaction);
 
 module.exports = router;

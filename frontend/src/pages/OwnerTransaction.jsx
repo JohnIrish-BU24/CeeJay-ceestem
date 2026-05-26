@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
 
 function OwnerTransaction() {
@@ -15,57 +15,114 @@ function OwnerTransaction() {
   const [editingTransaction, setEditingTransaction] = useState(null);
 
   // Core transaction records matching the exact rows from OwnerTransaction.png
-  const [dbTransactions, setDbTransactions] = useState([
-    { transId: 2001, custId: 1001, name: "Dela Cruz, Juan", date: "2024-01-02", service: "Walk-in", qty: 5, amount: 125.00, promo: "—", status: "Paid" },
-    { transId: 2002, custId: 1002, name: "Santos, Maria", date: "2024-02-02", service: "Walk-in", qty: 11, amount: 450.00, promo: "Yes", status: "Paid" },
-    { transId: 2003, custId: 1003, name: "Reyes, Pedro", date: "2024-04-03", service: "Walk-in", qty: 8, amount: 200.00, promo: "—", status: "Unpaid" },
-    { transId: 2004, custId: 1004, name: "Garcia, Ana", date: "2024-04-03", service: "Delivered", qty: 1, amount: 30.00, promo: "—", status: "Paid" },
-    { transId: 2005, custId: 1005, name: "Mendoza, Luis", date: "2024-05-04", service: "Walk-in", qty: 12, amount: 270.00, promo: "Yes", status: "Paid" },
-    { transId: 2006, custId: 1006, name: "Torres, Carla", date: "2024-06-07", service: "Walk-in", qty: 4, amount: 100.00, promo: "—", status: "Unpaid" },
-    { transId: 2007, custId: 1007, name: "Lopez, Mark", date: "2024-08-23", service: "Walk-in", qty: 1, amount: 200.00, promo: "—", status: "Paid" },
-    { transId: 2008, custId: 1008, name: "Gonzales, Ella", date: "2024-08-26", service: "Delivered", qty: 13, amount: 100.00, promo: "Yes", status: "Paid" },
-    { transId: 2009, custId: 1009, name: "Villanueva, Jose", date: "2024-09-27", service: "Walk-in", qty: 3, amount: 75.00, promo: "—", status: "Unpaid" }
-  ]);
+  const [dbTransactions, setDbTransactions] = useState([]);
+
+  const fetchTransactions = async (query = '') => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/transaction/?search=${query}`);
+      const data = await response.json();
+      
+      const formatted = data.map(tx => ({
+        Trans_ID: tx.Trans_ID,
+        date: tx.Trans_Date ? new Date(tx.Trans_Date).toLocaleString() : 'N/A',
+        customer: tx.Customer || 'N/A',
+        refiller: tx.Refiller || '—',
+        driver: tx.Driver || '—',
+        qty: tx.Quantity || 0,
+        amount: parseFloat(tx.Selling_Price) || 0,
+        service: tx.Serv_Name || 'No',
+        status: tx.Remarks
+      }));
+      setDbTransactions(formatted);
+    } catch (err) { console.error(err); }
+  };
+
+  useEffect(() => {
+    // This fetch runs immediately when the component mounts
+    fetchTransactions(searchQuery);
+  }, []); // Empty dependency array means "run once on mount"
+
+  useEffect(() => {
+      // This fetch runs when user types
+      const handler = setTimeout(() => {
+          fetchTransactions(searchQuery);
+      }, 200);
+      return () => clearTimeout(handler);
+  }, [searchQuery]); // Run when searchQuery changes
 
   // Master checkbox selection logic
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(dbTransactions.map(t => t.transId));
+      setSelectedIds(dbTransactions.map(t => t.Trans_ID));
     } else {
       setSelectedIds([]);
     }
   };
 
-  const handleSelectRow = (transId) => {
-    if (selectedIds.includes(transId)) {
-      setSelectedIds(selectedIds.filter(id => id !== transId));
+  const handleSelectRow = (Trans_ID) => {
+    if (selectedIds.includes(Trans_ID)) {
+      setSelectedIds(selectedIds.filter(id => id !== Trans_ID));
     } else {
-      setSelectedIds([...selectedIds, transId]);
+      setSelectedIds([...selectedIds, Trans_ID]);
     }
   };
 
   // Open inline modal for specific transaction row editing
   const openEditModal = (tx) => {
-    setEditingTransaction({ ...tx });
+    // Safely combine names if needed, or handle missing data
+    const fullName = `${tx.lname || ''}, ${tx.fname || ''}`;
+    setEditingTransaction({ 
+        ...tx, 
+        name: fullName, // This ensures the Edit form has a valid string to split
+        Remarks: tx.status // Match the backend field name
+    });
     setIsEditModalOpen(true);
   };
 
-  const handleModalSave = (e) => {
+  const handleModalSave = async (e) => {
     e.preventDefault();
-    setDbTransactions(dbTransactions.map(t => 
-      t.transId === editingTransaction.transId ? editingTransaction : t
-    ));
-    setIsEditModalOpen(false);
+    try {
+      await fetch(`http://localhost:5000/api/transaction/${editingTransaction.Trans_ID}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ Remarks: editingTransaction.Remarks }) // Matches controller
+      });
+      setIsEditModalOpen(false);
+      // Force reload to refresh table
+      window.location.reload(); 
+    } catch (err) { console.error(err); }
   };
 
-  const handleInlineDelete = (transId) => {
-    setDbTransactions(dbTransactions.filter(t => t.transId !== transId));
-    setSelectedIds(selectedIds.filter(id => id !== transId));
+  const handleInlineDelete = async (Trans_ID) => {
+    if (!Trans_ID) {
+        alert("Error: Cannot delete, Trans_ID is missing!");
+        return;
+    }
+
+    try {
+        const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}`, { 
+            method: 'DELETE' 
+        });
+        
+        if (response.ok) {
+            console.log("Successfully deleted!");
+            fetchTransactions(); // Refresh the table
+        } else {
+            const errorData = await response.json();
+            alert("Delete failed: " + (errorData.error || "Unknown error"));
+        }
+    } catch (err) {
+        console.error("Network error:", err);
+        alert("Check your backend server! It might not be running.");
+    }
   };
 
-  const handleBatchDelete = () => {
-    setDbTransactions(dbTransactions.filter(t => !selectedIds.includes(t.transId)));
+  const handleBatchDelete = async () => {
+    for (const id of selectedIds) {
+      await fetch(`http://localhost:5000/api/transaction/${id}`, { method: 'DELETE' });
+    }
     setSelectedIds([]);
+    fetchTransactions();
   };
 
   return (
@@ -97,13 +154,6 @@ function OwnerTransaction() {
           ))}
         </div>
       </nav>
-
-      {/* ================= MAIN BLUEPRINT ACTION BANNER ================= */}
-      <div style={styles.actionSubHeaderArea}>
-        <h1 style={styles.gradientSectionHeading}>
-          Transaction <span style={styles.headingPixelIcon}>💧</span>
-        </h1>
-      </div>
 
       {/* ================= WORKSPACE SCREEN BLOCK ================= */}
       <div style={styles.workspaceBodyWrapper}>
@@ -167,71 +217,50 @@ function OwnerTransaction() {
           )}
 
           {/* CENTRAL LEDGER DATA ELEMENT TABLE */}
-          <table style={styles.ledgerTableMarkup}>
-            <thead>
-              <tr style={styles.tableHeadBorderRow}>
-                <th style={{ ...styles.tableHeaderColumnCell, width: '40px' }}>
-                  <input 
-                    type="checkbox" 
-                    onChange={handleSelectAll}
-                    checked={selectedIds.length === dbTransactions.length && dbTransactions.length > 0}
-                    style={styles.tableBodyCheckboxInput}
-                  />
-                </th>
-                <th style={styles.tableHeaderColumnCell}>TRANS ID</th>
-                <th style={styles.tableHeaderColumnCell}>CUST ID</th>
-                <th style={styles.tableHeaderColumnCell}>CUSTOMER</th>
-                <th style={styles.tableHeaderColumnCell}>DATE</th>
-                <th style={styles.tableHeaderColumnCell}>SERVICE</th>
-                <th style={styles.tableHeaderColumnCell}>QTY</th>
-                <th style={styles.tableHeaderColumnCell}>AMOUNT</th>
-                <th style={styles.tableHeaderColumnCell}>PROMO</th>
-                <th style={styles.tableHeaderColumnCell}>STATUS</th>
-                <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center' }}>ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody>
-              {dbTransactions.map((tx) => (
-                <tr key={tx.transId} style={styles.tableBodyDataRow}>
-                  <td style={styles.tableBodyCellBlock}>
-                    <input 
-                      type="checkbox" 
-                      checked={selectedIds.includes(tx.transId)}
-                      onChange={() => handleSelectRow(tx.transId)}
-                      style={styles.tableBodyCheckboxInput}
-                    />
-                  </td>
-                  <td style={styles.tableBodyCellBlock}>{tx.transId}</td>
-                  <td style={styles.tableBodyCellBlock}>{tx.custId}</td>
-                  <td style={{ ...styles.tableBodyCellBlock, color: '#334155', fontWeight: '600' }}>{tx.name}</td>
-                  <td style={styles.tableBodyCellBlock}>{tx.date}</td>
-                  <td style={styles.tableBodyCellBlock}>{tx.service}</td>
-                  <td style={styles.tableBodyCellBlock}>{tx.qty}</td>
-                  <td style={{ ...styles.tableBodyCellBlock, color: '#1e293b', fontWeight: '700' }}>₱{tx.amount.toFixed(2)}</td>
-                  <td style={styles.tableBodyCellBlock}>
-                    {tx.promo === 'Yes' ? (
-                      <span style={styles.promoYesBadge}>Yes</span>
-                    ) : <span style={{ color: '#94a3b8' }}>—</span>}
-                  </td>
-                  <td style={styles.tableBodyCellBlock}>
-                    <span style={{
-                      ...styles.statusBadgeBase,
-                      backgroundColor: tx.status === 'Paid' ? '#dcfce7' : '#fee2e2',
-                      color: tx.status === 'Paid' ? '#16a34a' : '#ef4444'
-                    }}>
-                      {tx.status}
-                    </span>
-                  </td>
-                  <td style={styles.tableBodyCellBlock}>
-                    <div style={styles.inlineActionButtonsFlexGroup}>
-                      <button onClick={() => openEditModal(tx)} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
-                      <button onClick={() => handleInlineDelete(tx.transId)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
-                    </div>
-                  </td>
+          <div style={styles.scrollableTableContainer}>
+            <table style={styles.ledgerTableMarkup}>
+              <thead>
+                <tr style={styles.tableHeadBorderRow}>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px' }}></th>
+                  <th style={styles.tableHeaderColumnCell}>ID</th>
+                  <th style={styles.tableHeaderColumnCell}>DATE</th>
+                  <th style={styles.tableHeaderColumnCell}>CUSTOMER</th>
+                  <th style={styles.tableHeaderColumnCell}>REFILLER</th>
+                  <th style={styles.tableHeaderColumnCell}>DRIVER</th>
+                  <th style={styles.tableHeaderColumnCell}>QTY</th>
+                  <th style={styles.tableHeaderColumnCell}>PRICE</th>
+                  <th style={styles.tableHeaderColumnCell}>SERVICE</th>
+                  <th style={styles.tableHeaderColumnCell}>STATUS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center' }}>ACTIONS</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {dbTransactions.map((tx, index) => (
+                  <tr key={index} style={styles.tableBodyDataRow}>
+                    <td style={styles.tableBodyCellBlock}>
+                      <input type="checkbox" onChange={() => handleSelectRow(tx.Trans_ID)} style={styles.tableBodyCheckboxInput}/>
+                    </td>
+                    <td style={styles.tableBodyCellBlock}>{tx.Trans_ID}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.date}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.customer}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.refiller}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.driver}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.qty}</td>
+                    <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>₱{tx.amount.toFixed(2)}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.service}</td>
+                    <td style={styles.tableBodyCellBlock}>{tx.status}</td>
+                    <td style={styles.tableBodyCellBlock}>
+                      <div style={styles.inlineActionButtonsFlexGroup}>
+                        <button onClick={() => openEditModal(tx)} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
+                        <button onClick={() => handleInlineDelete(tx.Trans_ID)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
 
         </div>
       </div>
@@ -255,7 +284,7 @@ function OwnerTransaction() {
                 
                 <div style={styles.modalFormInputGroupFieldUnit}>
                   <label style={styles.modalFormFieldLabelHeader}>TRANS ID</label>
-                  <input type="text" value={editingTransaction.transId} disabled style={styles.modalDisabledInputField} />
+                  <input type="text" value={editingTransaction.Trans_ID} disabled style={styles.modalDisabledInputField} />
                 </div>
 
                 <div style={styles.modalFormInputGroupFieldUnit}>
@@ -350,7 +379,7 @@ function OwnerTransaction() {
               <div style={styles.modalFooterButtonsControlFlexRow}>
                 <button 
                   type="button" 
-                  onClick={() => handleInlineDelete(editingTransaction.transId)} 
+                  onClick={() => handleInlineDelete(editingTransaction.Trans_ID)} 
                   style={styles.modalDangerActionDeleteButton}
                 >
                   Delete
@@ -468,18 +497,33 @@ const styles = {
     flex: 1,
     overflowY: 'auto',
     backgroundColor: '#e6f2fa', // Soft teal-sky backdrop from screen imagery
-    padding: '30px 40px',
-    boxSizing: 'border-box'
+    padding: '20px ',
+    boxSizing: 'border-box',
+    display: 'flex', // Add this
+    flexDirection: 'column'
   },
   dataLogTableCanvasCard: {
     backgroundColor: '#ffffff',
     borderRadius: '16px',
     border: '1px solid #bde0fe',
-    padding: '24px',
+    padding: '30px',
     boxSizing: 'border-box',
     display: 'flex',
     flexDirection: 'column',
-    boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)'
+    boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)',
+    height: 'calc(100vh - 110px)', 
+    width: '100%',
+    overflow: 'hidden'
+  },
+  tableScrollContainer: {
+    flex: 1, 
+    overflowY: 'auto',  
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
+    marginTop: '10px',
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 0
   },
   tableControlsGridRow: {
     display: 'flex',
@@ -593,17 +637,31 @@ const styles = {
   ledgerTableMarkup: {
     width: '100%',
     borderCollapse: 'collapse',
-    textAlign: 'left'
+    textAlign: 'left',
+    tableLayout: 'fixed', 
   },
   tableHeadBorderRow: {
     borderBottom: '2px solid #bde0fe'
+  },
+  scrollableTableContainer: {
+    overflowY: 'auto',  
+    border: '1px solid #e2e8f0',
+    borderRadius: '8px',
   },
   tableHeaderColumnCell: {
     padding: '14px 10px',
     fontSize: '0.85rem',
     fontWeight: '800',
     color: '#64748b',
-    letterSpacing: '0.5px'
+    letterSpacing: '0.5px',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    position: 'sticky', 
+    top: 0,            
+    backgroundColor: '#ffffff', 
+    zIndex: 10,        
+    borderBottom: '2px solid #bde0fe'
   },
   tableBodyDataRow: {
     borderBottom: '1px solid #e2e8f0',
@@ -612,7 +670,8 @@ const styles = {
   tableBodyCellBlock: {
     padding: '10px',
     fontSize: '0.95rem',
-    color: '#475569'
+    color: '#475569',
+    wordWrap: 'break-word'
   },
   tableBodyCheckboxInput: {
     width: '18px',

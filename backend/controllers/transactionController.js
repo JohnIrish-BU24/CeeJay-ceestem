@@ -2,20 +2,42 @@ const db = require('../config/db');
 
 // 1. Get a comprehensive Transaction Status Log (Combines Record, Detail, and Customer)
 exports.getTransactionHistory = async (req, res) => {
+    const { search } = req.query; 
     try {
-        const queryText = `
-            SELECT tr.Trans_ID, tr.Trans_Date, tr.Remarks, c.Cust_LName, c.Cust_FName,
-                   td.Trans_Detail_ID, td.Quantity, td.Selling_Price, td.Promo, sd.Serv_Name
+        let queryText = `
+            SELECT 
+                tr.Trans_ID, tr.Trans_Date, tr.Remarks,
+                CONCAT(c.Cust_LName, ', ', c.Cust_FName) AS Customer,
+                sd.Serv_Name,
+                MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
+                MAX(CASE WHEN wd.Role_ID = 'D' THEN e.Emp_LName END) AS Driver,
+                td.Quantity, td.Selling_Price
             FROM TRANS_RECORD tr
             JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
             JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
             JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
+            JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
+            JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
+        `;
+
+        const queryParams = [];
+        
+        // ONLY add WHERE clause if search has actual content
+        if (search && search.trim() !== "") {
+            queryText += ` WHERE (c.Cust_LName LIKE ? OR c.Cust_FName LIKE ? OR tr.Trans_ID LIKE ?) `;
+            queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        queryText += `
+            GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName, 
+                     sd.Serv_Name, td.Quantity, td.Selling_Price, tr.Remarks
             ORDER BY tr.Trans_Date DESC
         `;
-        const [rows] = await db.query(queryText);
+
+        const [rows] = await db.query(queryText, queryParams);
         res.json(rows);
     } catch (error) {
-        res.status(500).json({ error: "Failed to retrieve transaction logs", details: error.message });
+        res.status(500).json({ error: "Failed to retrieve logs", details: error.message });
     }
 };
 
@@ -80,5 +102,34 @@ exports.createTransaction = async (req, res) => {
         res.status(500).json({ error: "Transaction processing failed. Rollback executed.", details: error.message });
     } finally {
         connection.release(); // Return connection back to the pool
+    }
+};
+
+exports.deleteTransaction = async (req, res) => {
+    const { id } = req.params;
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        await connection.query('DELETE FROM TRANS_DETAIL WHERE Trans_ID = ?', [id]);
+        await connection.query('DELETE FROM WORK_DETAIL WHERE Trans_ID = ?', [id]);
+        await connection.query('DELETE FROM TRANS_RECORD WHERE Trans_ID = ?', [id]);
+        await connection.commit();
+        res.json({ message: "Transaction deleted successfully" });
+    } catch (err) {
+        await connection.rollback();
+        res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
+    }
+};
+
+exports.updateTransaction = async (req, res) => {
+    const { id } = req.params;
+    const { Remarks } = req.body;
+    try {
+        await db.query('UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', [Remarks, id]);
+        res.json({ message: "Transaction updated" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 };
