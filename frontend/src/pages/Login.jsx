@@ -91,47 +91,57 @@ function Login({ onLoginVerify }) {
               <label style={styles.fieldHeading}>Sign in as</label>
               <div style={styles.cardRow}>
                 
+                {/* --- OWNER BUTTON --- */}
                 <button
                   type="button"
                   onClick={() => setUserType('owner')}
                   style={{
                     ...styles.selectorCard,
-                    borderColor: userType === 'owner' ? '#0077b6' : '#bde0fe',
+                    // Use dark blue (#014f86) for the active border
+                    borderColor: userType === 'owner' ? '#014f86' : '#bde0fe',
                     backgroundColor: userType === 'owner' ? '#f0f8ff' : '#ffffff',
                     borderWidth: userType === 'owner' ? '2px' : '1px'
                   }}
                 >
-                  <div style={{ ...styles.iconCircle, backgroundColor: '#014f86' }}>
-                    <Store size={18} color="#ffffff" />
+                  <div style={{ 
+                    ...styles.iconCircle, 
+                    backgroundColor: userType === 'owner' ? '#014f86' : '#eaf4fc' 
+                  }}>
+                    <Store size={18} color={userType === 'owner' ? '#ffffff' : '#014f86'} />
                   </div>
                   <div style={styles.cardTextContent}>
                     <span style={styles.cardMainLabel}>Owner</span>
                     <span style={styles.cardSubLabel}>Full access</span>
                   </div>
-                  <div style={{ ...styles.radioCircle, borderColor: userType === 'owner' ? '#014f86' : '#bde0fe' }}>
+                  <div style={{ ...styles.radioCircle, borderColor: userType === 'owner' ? '#014f86' : '#cbd5e1' }}>
                     {userType === 'owner' && <div style={{ ...styles.radioDot, backgroundColor: '#014f86' }} />}
                   </div>
                 </button>
 
+                {/* --- EMPLOYEE BUTTON --- */}
                 <button
                   type="button"
                   onClick={() => setUserType('employee')}
                   style={{
                     ...styles.selectorCard,
-                    borderColor: userType === 'employee' ? '#0077b6' : '#bde0fe',
+                    // Use dark blue (#014f86) for the active border
+                    borderColor: userType === 'employee' ? '#014f86' : '#bde0fe',
                     backgroundColor: userType === 'employee' ? '#f0f8ff' : '#ffffff',
                     borderWidth: userType === 'employee' ? '2px' : '1px'
                   }}
                 >
-                  <div style={{ ...styles.iconCircle, backgroundColor: '#00b4d8' }}>
-                    <Droplet size={18} color="#ffffff" />
+                  <div style={{ 
+                    ...styles.iconCircle, 
+                    backgroundColor: userType === 'employee' ? '#014f86' : '#eaf4fc' 
+                  }}>
+                    <Droplet size={18} color={userType === 'employee' ? '#ffffff' : '#014f86'} />
                   </div>
                   <div style={styles.cardTextContent}>
                     <span style={styles.cardMainLabel}>Employee</span>
                     <span style={styles.cardSubLabel}>Limited access</span>
                   </div>
-                  <div style={{ ...styles.radioCircle, borderColor: userType === 'employee' ? '#00b4d8' : '#bde0fe' }}>
-                    {userType === 'employee' && <div style={{ ...styles.radioDot, backgroundColor: '#00b4d8' }} />}
+                  <div style={{ ...styles.radioCircle, borderColor: userType === 'employee' ? '#014f86' : '#cbd5e1' }}>
+                    {userType === 'employee' && <div style={{ ...styles.radioDot, backgroundColor: '#014f86' }} />}
                   </div>
                 </button>
               </div>
@@ -142,38 +152,42 @@ function Login({ onLoginVerify }) {
               <div style={styles.inputGroup}>
                 <label style={styles.fieldHeading}>Role <span style={{ color: '#ef4444' }}>*</span></label>
                 <div style={styles.cardRow}>
-                  
+                  {/* --- REFILLER BUTTON --- */}
                   <button
                     type="button"
                     onClick={() => setEmployeeRole('refiller')}
                     style={{
                       ...styles.selectorCardSmall,
-                      borderColor: employeeRole === 'refiller' ? '#00b4d8' : '#bde0fe',
+                      // Changed cyan to dark blue (#014f86)
+                      borderColor: employeeRole === 'refiller' ? '#014f86' : '#bde0fe',
                       backgroundColor: employeeRole === 'refiller' ? '#f0f8ff' : '#ffffff',
                       borderWidth: employeeRole === 'refiller' ? '2px' : '1px'
                     }}
                   >
-                    <Pipette size={18} color="#00b4d8" style={{ marginRight: '8px' }} />
+                    {/* The icon in the image stays dark blue whether selected or not */}
+                    <Pipette size={18} color="#014f86" style={{ marginRight: '8px' }} />
                     <span style={styles.smallCardText}>Refiller</span>
-                    <div style={{ ...styles.radioCircleSmall, marginLeft: 'auto', borderColor: employeeRole === 'refiller' ? '#00b4d8' : '#bde0fe' }}>
-                      {employeeRole === 'refiller' && <div style={{ ...styles.radioDotSmall, backgroundColor: '#00b4d8' }} />}
+                    <div style={{ ...styles.radioCircleSmall, marginLeft: 'auto', borderColor: employeeRole === 'refiller' ? '#014f86' : '#cbd5e1' }}>
+                      {employeeRole === 'refiller' && <div style={{ ...styles.radioDotSmall, backgroundColor: '#014f86' }} />}
                     </div>
                   </button>
 
+                  {/* --- DRIVER BUTTON --- */}
                   <button
                     type="button"
                     onClick={() => setEmployeeRole('driver')}
                     style={{
                       ...styles.selectorCardSmall,
-                      borderColor: employeeRole === 'driver' ? '#00b4d8' : '#bde0fe',
+                      // Changed cyan to dark blue (#014f86)
+                      borderColor: employeeRole === 'driver' ? '#014f86' : '#bde0fe',
                       backgroundColor: employeeRole === 'driver' ? '#f0f8ff' : '#ffffff',
                       borderWidth: employeeRole === 'driver' ? '2px' : '1px'
                     }}
                   >
-                    <Truck size={18} color="#00b4d8" style={{ marginRight: '8px' }} />
+                    <Truck size={18} color="#014f86" style={{ marginRight: '8px' }} />
                     <span style={styles.smallCardText}>Driver</span>
-                    <div style={{ ...styles.radioCircleSmall, marginLeft: 'auto', borderColor: employeeRole === 'driver' ? '#00b4d8' : '#bde0fe' }}>
-                      {employeeRole === 'driver' && <div style={{ ...styles.radioDotSmall, backgroundColor: '#00b4d8' }} />}
+                    <div style={{ ...styles.radioCircleSmall, marginLeft: 'auto', borderColor: employeeRole === 'driver' ? '#014f86' : '#cbd5e1' }}>
+                      {employeeRole === 'driver' && <div style={{ ...styles.radioDotSmall, backgroundColor: '#014f86' }} />}
                     </div>
                   </button>
                 </div>
@@ -406,14 +420,21 @@ const styles = {
   },
   mainGreeting: {
     fontSize: '2.5rem',
-    color: '#014f86',
     fontWeight: 'bold',
     margin: '0 0 6px 0',
     letterSpacing: '-1px',
-    textAlign: 'left'
+    textAlign: 'left',
+    backgroundImage: 'linear-gradient(to right, #014f86, #2cb2bf)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    backgroundClip: 'text',
+    color: 'transparent'
   },
   accentText: {
-    color: '#00b4d8',
+    fontWeight: 'bold'
+  },
+  accentText: {
+    color: '#2cb2bf',
     fontWeight: 'bold'
   },
   subGreeting: {
