@@ -4,5 +4,7 @@ const barangayController = require('../controllers/barangayController');
 
 router.get('/', barangayController.getAllBarangays);
 router.post('/', barangayController.createBarangay);
+router.put('/:id', barangayController.updateBarangay);
+router.delete('/:id', barangayController.deleteBarangay);
 
 module.exports = router;
