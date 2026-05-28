@@ -2,7 +2,7 @@ const db = require('../config/db');
 
 // 1. Get a comprehensive Transaction Status Log (Combines Record, Detail, and Customer)
 exports.getTransactionHistory = async (req, res) => {
-    const { search } = req.query; 
+    const { search, dateRange } = req.query; 
     try {
         let queryText = `
             SELECT 
@@ -22,10 +22,27 @@ exports.getTransactionHistory = async (req, res) => {
 
         const queryParams = [];
         
-        // ONLY add WHERE clause if search has actual content
+        // Search Function
         if (search && search.trim() !== "") {
             queryText += ` WHERE (c.Cust_LName LIKE ? OR c.Cust_FName LIKE ? OR tr.Trans_ID LIKE ?) `;
             queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
+        }
+
+        // Filter Date Function
+        if (dateRange && dateRange !== 'All Time') {
+            const dateClause = (search && search.trim() !== "") ? ` AND ` : ` WHERE `;
+            let interval = '';
+            
+            // Ensure these match your frontend <option> values EXACTLY
+            if (dateRange === 'Last Week') interval = 'INTERVAL 1 WEEK';
+            else if (dateRange === 'Last Month') interval = 'INTERVAL 1 MONTH';
+            else if (dateRange === 'Last 3 Months') interval = 'INTERVAL 3 MONTH';
+            else if (dateRange === 'Last Year') interval = 'INTERVAL 1 YEAR';
+
+            // Safety: Only append if we successfully mapped an interval
+            if (interval !== '') {
+                queryText += `${dateClause} tr.Trans_Date >= DATE_SUB(NOW(), ${interval}) `;
+            }
         }
 
         queryText += `
@@ -123,13 +140,56 @@ exports.deleteTransaction = async (req, res) => {
     }
 };
 
+exports.deleteAllTransactions = async (req, res) => {
+    const { password } = req.body;
+    console.log("Attempting to clear all. Password received:", password);
+
+    if (password !== "ceestem123") {
+        console.error("Auth Failed: Incorrect password.");
+        return res.status(403).json({ error: "Invalid password." });
+    }
+
+    const connection = await db.getConnection();
+    try {
+        console.log("Starting deletion...");
+        await connection.query('SET FOREIGN_KEY_CHECKS = 0');
+        
+        // Explicitly delete in order
+        await connection.query('DELETE FROM TRANS_DETAIL');
+        await connection.query('DELETE FROM WORK_DETAIL');
+        await connection.query('DELETE FROM TRANS_RECORD');
+        
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
+        console.log("Database cleared successfully.");
+        
+        res.status(200).json({ message: "All records cleared successfully." });
+    } catch (err) {
+        console.error("Database deletion failed:", err);
+        await connection.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
+        res.status(500).json({ error: "Server Error: " + err.message });
+    } finally {
+        connection.release();
+    }
+};
+
 exports.updateTransaction = async (req, res) => {
     const { id } = req.params;
-    const { Remarks } = req.body;
+    const { service, qty, amount, status } = req.body; 
+    
+    console.log("Updating Trans ID:", id);
+    console.log("Data:", { service, qty, amount, status });
+
     try {
-        await db.query('UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', [Remarks, id]);
+        // ONLY update the Trans_RECORD table first to isolate the error
+        const result = await db.query(
+            'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', 
+            [status, id]
+        );
+        
+        console.log("Update successful");
         res.json({ message: "Transaction updated" });
     } catch (err) {
+        console.error("SQL ERROR:", err); // THIS will print the real reason in your backend terminal
         res.status(500).json({ error: err.message });
     }
 };
