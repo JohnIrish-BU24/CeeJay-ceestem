@@ -4,8 +4,9 @@ import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
 function OwnerTransaction() {
   const [activeMenu, setActiveMenu] = useState('Transaction');
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All Status');
-  const [promoFilter, setPromoFilter] = useState('All Promo');
+  const [dateFilter, setDateFilter] = useState('All Time');
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   
   // Selection states for batch actions
   const [selectedIds, setSelectedIds] = useState([]);
@@ -17,10 +18,12 @@ function OwnerTransaction() {
   // Core transaction records matching the exact rows from OwnerTransaction.png
   const [dbTransactions, setDbTransactions] = useState([]);
 
-  const fetchTransactions = async (query = '') => {
+  const fetchTransactions = async (query = '', range = 'All Time') => {
     try {
-      const response = await fetch(`http://localhost:5000/api/transaction/?search=${query}`);
-      const data = await response.json();
+        const url = `http://localhost:5000/api/transaction/?search=${encodeURIComponent(query.trim())}&dateRange=${encodeURIComponent(range.trim())}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
       
       const formatted = data.map(tx => ({
         Trans_ID: tx.Trans_ID,
@@ -39,16 +42,16 @@ function OwnerTransaction() {
 
   useEffect(() => {
     // This fetch runs immediately when the component mounts
-    fetchTransactions(searchQuery);
+    fetchTransactions(searchQuery, dateFilter);
   }, []); // Empty dependency array means "run once on mount"
 
   useEffect(() => {
       // This fetch runs when user types
       const handler = setTimeout(() => {
-          fetchTransactions(searchQuery);
+          fetchTransactions(searchQuery, dateFilter);
       }, 200);
       return () => clearTimeout(handler);
-  }, [searchQuery]); // Run when searchQuery changes
+  }, [searchQuery, dateFilter]); // Run when searchQuery changes
 
   // Master checkbox selection logic
   const handleSelectAll = (e) => {
@@ -80,24 +83,41 @@ function OwnerTransaction() {
   };
 
   const handleModalSave = async (e) => {
-    e.preventDefault();
+    e.preventDefault(); // CRITICAL: This stops the browser from refreshing/redirecting
+    
     try {
-      await fetch(`http://localhost:5000/api/transaction/${editingTransaction.Trans_ID}`, {
+      const response = await fetch(`http://localhost:5000/api/transaction/${editingTransaction.Trans_ID}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ Remarks: editingTransaction.Remarks }) // Matches controller
+        body: JSON.stringify({ 
+          service: editingTransaction.service,
+          qty: editingTransaction.qty,
+          amount: editingTransaction.amount,
+          status: editingTransaction.status
+        })
       });
-      setIsEditModalOpen(false);
-      // Force reload to refresh table
-      window.location.reload(); 
-    } catch (err) { console.error(err); }
-  };
 
+      if (!response.ok) {
+        throw new Error("Failed to update transaction");
+      }
+
+      setIsEditModalOpen(false);
+      fetchTransactions(); // Refresh the list without reloading the whole page
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("Could not update transaction. Check console.");
+    }
+  };
+  
   const handleInlineDelete = async (Trans_ID) => {
     if (!Trans_ID) {
         alert("Error: Cannot delete, Trans_ID is missing!");
         return;
     }
+
+    const isConfirmed = window.confirm("Are you sure you want to delete this transaction? This action cannot be undone.");
+
+    if (!isConfirmed) return;
 
     try {
         const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}`, { 
@@ -123,6 +143,31 @@ function OwnerTransaction() {
     }
     setSelectedIds([]);
     fetchTransactions();
+  };
+
+  const handleDeleteAll = async () => {
+    try {
+        const response = await fetch(`http://localhost:5000/api/transaction/all`, { 
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: deletePassword })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message); // Should show "All records cleared successfully."
+            setIsDeleteAllModalOpen(false);
+            setDeletePassword('');
+            fetchTransactions(); 
+        } else {
+            // This will trigger if the server returns 403 or 500
+            alert("Error: " + (data.error || "Unknown error"));
+        }
+    } catch (err) {
+        console.error("Fetch failed:", err);
+        alert("Failed to connect to the server.");
+    }
   };
 
   return (
@@ -161,6 +206,9 @@ function OwnerTransaction() {
           
           {/* CONTROL SECTION ROW: Filtering, Searching, and Adding */}
           <div style={styles.tableControlsGridRow}>
+  
+          {/* LEFT GROUP: Search + Filter */}
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center', flex: 1 }}>
             <div style={styles.searchBarBoxFrame}>
               <Search size={18} color="#0077b6" style={styles.searchLeftIcon} />
               <input 
@@ -172,38 +220,29 @@ function OwnerTransaction() {
               />
             </div>
 
-            <div style={styles.filterGroupRightCluster}>
-              <div style={styles.dropdownSelectContainer}>
-                <select 
-                  value={statusFilter} 
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  style={styles.nativeCustomSelect}
-                >
-                  <option>All Status</option>
-                  <option>Paid</option>
-                  <option>Unpaid</option>
-                </select>
-                <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
-              </div>
-
-              <div style={styles.dropdownSelectContainer}>
-                <select 
-                  value={promoFilter} 
-                  onChange={(e) => setPromoFilter(e.target.value)}
-                  style={styles.nativeCustomSelect}
-                >
-                  <option>All Promo</option>
-                  <option>Yes</option>
-                  <option>—</option>
-                </select>
-                <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
-              </div>
-
-              <button style={styles.addTransactionPrimaryActionButton}>
-                <Plus size={16} /> Add Transaction
-              </button>
+            <div style={styles.dropdownSelectContainer}>
+              <select 
+                value={dateFilter} 
+                onChange={(e) => setDateFilter(e.target.value)}
+                style={styles.nativeCustomSelect}
+              >
+                <option>All Time</option>
+                <option>Last Week</option>
+                <option>Last Month</option>
+                <option>Last 3 Months</option>
+                <option>Last Year</option>
+              </select>
+              <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
             </div>
           </div>
+
+          <button 
+            onClick={() => setIsDeleteAllModalOpen(true)}
+            style={{...styles.addTransactionPrimaryActionButton, borderColor: '#ef4444', color: '#ef4444'}}
+          >
+            <Trash2 size={16} /> Clear All
+          </button>
+        </div>
 
           {/* DYNAMIC RED BATCH ACTION BAR (Triggers only when checkboxes are ticked) */}
           {selectedIds.length > 0 && (
@@ -221,25 +260,21 @@ function OwnerTransaction() {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px' }}></th>
-                  <th style={styles.tableHeaderColumnCell}>ID</th>
-                  <th style={styles.tableHeaderColumnCell}>DATE</th>
-                  <th style={styles.tableHeaderColumnCell}>CUSTOMER</th>
-                  <th style={styles.tableHeaderColumnCell}>REFILLER</th>
-                  <th style={styles.tableHeaderColumnCell}>DRIVER</th>
-                  <th style={styles.tableHeaderColumnCell}>QTY</th>
-                  <th style={styles.tableHeaderColumnCell}>PRICE</th>
-                  <th style={styles.tableHeaderColumnCell}>SERVICE</th>
-                  <th style={styles.tableHeaderColumnCell}>STATUS</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center' }}>ACTIONS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '170px' }}>DATE</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CUSTOMER</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>REFILLER</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>DRIVER</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>QTY</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '90px' }}>PRICE</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>SERVICE</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>STATUS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {dbTransactions.map((tx, index) => (
                   <tr key={index} style={styles.tableBodyDataRow}>
-                    <td style={styles.tableBodyCellBlock}>
-                      <input type="checkbox" onChange={() => handleSelectRow(tx.Trans_ID)} style={styles.tableBodyCheckboxInput}/>
-                    </td>
                     <td style={styles.tableBodyCellBlock}>{tx.Trans_ID}</td>
                     <td style={styles.tableBodyCellBlock}>{tx.date}</td>
                     <td style={styles.tableBodyCellBlock}>{tx.customer}</td>
@@ -267,140 +302,149 @@ function OwnerTransaction() {
 
       {/* ================= MODAL OVERLAY: EDIT TRANSACTION ================= */}
       {isEditModalOpen && editingTransaction && (
+  <div style={styles.modalOverlayMask}>
+    <div style={styles.modalWindowContainer}>
+      <div style={styles.modalHeaderRow}>
+        <div style={styles.modalHeaderTitleGroup}>
+          <div style={{ ...styles.modalHeaderTitleIconBox, width: '30px', display: 'flex', alignItems: 'center', color: '#0077b6' }}>
+            <Edit2 size={20} />
+          </div>
+          <h2 style={styles.modalHeaderHeadingText}>EDIT TRANSACTION</h2>
+        </div>
+        <button style={styles.modalHeaderCloseXButton} onClick={() => setIsEditModalOpen(false)}>
+          <X size={20} />
+        </button>
+      </div>
+
+      <form onSubmit={handleModalSave} style={styles.modalContentFormElement}>
+        <div style={styles.modalFormInputFieldsDoubleColumnGrid}>
+          
+          {/* 1. Trans ID & Customer Name (Disabled) */}
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>TRANS ID</label>
+            <input type="text" value={editingTransaction.Trans_ID} disabled style={styles.modalDisabledInputField} />
+          </div>
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>CUSTOMER NAME</label>
+            <input type="text" value={editingTransaction.customer} disabled style={styles.modalDisabledInputField} />
+          </div>
+
+          {/* 2. Employee Info (Disabled) */}
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>REFILLER</label>
+            <input type="text" value={editingTransaction.refiller} disabled style={styles.modalDisabledInputField} />
+          </div>
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>DRIVER</label>
+            <input type="text" value={editingTransaction.driver} disabled style={styles.modalDisabledInputField} />
+          </div>
+
+          {/* 3. Service & Quantity (Fixed Pricing Logic) */}
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>SERVICE</label>
+            <div style={styles.modalSelectFieldWrapperBox}>
+              <select 
+                value={editingTransaction.service} 
+                onChange={(e) => {
+                  const newService = e.target.value;
+                  // Set price based purely on service type
+                  const fixedPrice = newService === 'Delivery' ? 35 : 30;
+                  setEditingTransaction({...editingTransaction, service: newService, amount: fixedPrice});
+                }}
+                style={styles.modalNativeDropdownSelect}
+              >
+                <option value="Delivery">Delivery</option>
+                <option value="Walk-in">Walk-in</option>
+              </select>
+              <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
+            </div>
+          </div>
+
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>QUANTITY</label>
+            <input 
+              type="number" 
+              value={editingTransaction.qty} 
+              onChange={(e) => {
+                // Force the value to be at least 1
+                const newQty = Math.max(1, parseInt(e.target.value) || 1);
+                setEditingTransaction({...editingTransaction, qty: newQty});
+              }}
+              style={styles.modalActiveInputField} 
+            />
+          </div>
+
+          {/* 4. Price & Status */}
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>PRICE</label>
+            <input type="text" value={`₱${editingTransaction.amount.toFixed(2)}`} disabled style={styles.modalDisabledInputField} />
+          </div>
+          <div style={styles.modalFormInputGroupFieldUnit}>
+            <label style={styles.modalFormFieldLabelHeader}>STATUS</label>
+            <div style={styles.modalSelectFieldWrapperBox}>
+              <select value={editingTransaction.status} onChange={(e) => setEditingTransaction({...editingTransaction, status: e.target.value})} style={styles.modalNativeDropdownSelect}>
+                <option value="Paid">PAID</option>
+                <option value="Unpaid">UNPAID</option>
+              </select>
+              <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.modalFooterButtonsControlFlexRow}>
+          <button type="button" onClick={() => setIsEditModalOpen(false)} style={styles.modalDismissCancelButtonLink}>
+            Cancel
+          </button>
+          <button type="submit" style={styles.modalPrimaryActionSaveButton}>
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+
+      {isDeleteAllModalOpen && (
         <div style={styles.modalOverlayMask}>
           <div style={styles.modalWindowContainer}>
-            <div style={styles.modalHeaderRow}>
-              <div style={styles.modalHeaderTitleGroup}>
-                <div style={styles.modalHeaderTitleIconBox}>✏️</div>
-                <h2 style={styles.modalHeaderHeadingText}>EDIT TRANSACTION</h2>
-              </div>
-              <button style={styles.modalHeaderCloseXButton} onClick={() => setIsEditModalOpen(false)}>
-                <X size={20} />
-              </button>
+            
+            {/* Header matching your inspiration image */}
+            <div style={styles.modalHeaderTitleGroup}>
+              <span>⚠️</span> 
+              <h2 style={styles.modalHeaderHeadingText}>DELETE ALL RECORDS</h2>
             </div>
 
-            <form onSubmit={handleModalSave} style={styles.modalContentFormElement}>
-              <div style={styles.modalFormInputFieldsDoubleColumnGrid}>
-                
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>TRANS ID</label>
-                  <input type="text" value={editingTransaction.Trans_ID} disabled style={styles.modalDisabledInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>CUSTOMER LAST NAME</label>
-                  <input 
-                    type="text" 
-                    value={editingTransaction.name.split(',')[0] || ''} 
-                    onChange={(e) => {
-                      const firstName = editingTransaction.name.split(',')[1] || '';
-                      setEditingTransaction({ ...editingTransaction, name: `${e.target.value},${firstName}` });
-                    }}
-                    style={styles.modalActiveInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>CUSTOMER FIRST NAME</label>
-                  <input 
-                    type="text" 
-                    value={(editingTransaction.name.split(',')[1] || '').trim()} 
-                    onChange={(e) => {
-                      const lastName = editingTransaction.name.split(',')[0] || '';
-                      setEditingTransaction({ ...editingTransaction, name: `${lastName}, ${e.target.value}` });
-                    }}
-                    style={styles.modalActiveInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>SERVICE</label>
-                  <input 
-                    type="text" 
-                    value={editingTransaction.service} 
-                    onChange={(e) => setEditingTransaction({ ...editingTransaction, service: e.target.value })}
-                    style={styles.modalActiveInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>PRICE</label>
-                  <input 
-                    type="text" 
-                    value={`₱${editingTransaction.amount.toFixed(2)}`} 
-                    disabled 
-                    style={styles.modalDisabledInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>QUANTITY</label>
-                  <input 
-                    type="number" 
-                    value={editingTransaction.qty} 
-                    onChange={(e) => setEditingTransaction({ ...editingTransaction, qty: parseInt(e.target.value) || 0 })}
-                    style={styles.modalActiveInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>PROMO</label>
-                  <div style={styles.modalSelectFieldWrapperBox}>
-                    <select 
-                      value={editingTransaction.promo} 
-                      onChange={(e) => setEditingTransaction({ ...editingTransaction, promo: e.target.value })}
-                      style={styles.modalNativeDropdownSelect}
-                    >
-                      <option value="Yes">YES</option>
-                      <option value="—">NO</option>
-                    </select>
-                    <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
-                  </div>
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>STATUS</label>
-                  <div style={styles.modalSelectFieldWrapperBox}>
-                    <select 
-                      value={editingTransaction.status} 
-                      onChange={(e) => setEditingTransaction({ ...editingTransaction, status: e.target.value })}
-                      style={styles.modalNativeDropdownSelect}
-                    >
-                      <option value="Paid">PAID</option>
-                      <option value="Unpaid">UNPAID</option>
-                    </select>
-                    <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
-                  </div>
-                </div>
-
-              </div>
-
-              {/* ACTION FOOTER SECTION ROW CONTROL */}
-              <div style={styles.modalFooterButtonsControlFlexRow}>
-                <button 
-                  type="button" 
-                  onClick={() => handleInlineDelete(editingTransaction.Trans_ID)} 
-                  style={styles.modalDangerActionDeleteButton}
-                >
-                  Delete
-                </button>
-                <button 
-                  type="button" 
-                  onClick={() => setIsEditModalOpen(false)} 
-                  style={styles.modalDismissCancelButtonLink}
-                >
-                  Cancel
-                </button>
-                <button type="submit" style={styles.modalPrimaryActionSaveButton}>
-                  Save Changes
-                </button>
-              </div>
-
-            </form>
+            <p style={{ color: '#475569', margin: '0' }}>
+              This action is irreversible. Please enter the owner password to confirm:
+            </p>
+            
+            <input 
+              type="text" 
+              value={deletePassword} 
+              onChange={(e) => setDeletePassword(e.target.value)} 
+              style={{
+                ...styles.modalActiveInputField,
+                WebkitTextSecurity: 'disc' 
+              }}
+              name="admin-secret-code"
+              id="admin-secret-code"
+              autoComplete="off"
+              placeholder="Enter Admin Password"
+              readOnly
+              onFocus={(e) => e.target.removeAttribute('readOnly')}
+            />
+            
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <button onClick={handleDeleteAll} style={styles.modalDangerActionDeleteButton}>
+                Confirm Delete
+              </button>
+              <button onClick={() => setIsDeleteAllModalOpen(false)} style={styles.modalDismissCancelButtonLink}>
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}
-
     </div>
   );
 }
@@ -538,7 +582,7 @@ const styles = {
     position: 'relative',
     display: 'flex',
     alignItems: 'center',
-    flex: '1',
+    flex: '0 1 400px',
     maxWidth: '560px'
   },
   searchLeftIcon: {
@@ -668,10 +712,12 @@ const styles = {
     height: '52px'
   },
   tableBodyCellBlock: {
-    padding: '10px',
-    fontSize: '0.95rem',
+    padding: '12px 10px', // Increased vertical padding for a more relaxed look
+    fontSize: '0.9rem',
     color: '#475569',
-    wordWrap: 'break-word'
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap'
   },
   tableBodyCheckboxInput: {
     width: '18px',
@@ -732,24 +778,23 @@ const styles = {
     left: 0,
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(1, 22, 39, 0.4)',
-    backdropFilter: 'blur(3px)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2000
   },
   modalWindowContainer: {
-    backgroundColor: '#e6f2fa', // Matching exact soft baby blue background inside window frame
+    backgroundColor: '#ffffff', // Matches the clean white interior of your service modal
     width: '90%',
-    maxWidth: '680px',
-    borderRadius: '24px',
-    border: '2px solid #0077b6',
-    padding: '32px',
-    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+    maxWidth: '500px',
+    borderRadius: '12px',
+    border: '1px solid #0077b6', // Matches the blue border from your image
+    padding: '24px',
     display: 'flex',
     flexDirection: 'column',
-    boxSizing: 'border-box'
+    gap: '20px',
+    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)'
   },
   modalHeaderRow: {
     display: 'flex',
@@ -761,17 +806,18 @@ const styles = {
   modalHeaderTitleGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px'
+    gap: '12px',
+    borderBottom: '1px solid #bde0fe',
+    paddingBottom: '15px'
   },
   modalHeaderTitleIconBox: {
     fontSize: '1.5rem'
   },
   modalHeaderHeadingText: {
-    fontSize: '1.75rem',
-    fontWeight: '900',
+    fontSize: '1.25rem',
+    fontWeight: '700',
     color: '#011627',
-    margin: 0,
-    letterSpacing: '0.5px'
+    margin: 0
   },
   modalHeaderCloseXButton: {
     background: 'none',

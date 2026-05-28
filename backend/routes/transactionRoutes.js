@@ -3,6 +3,7 @@ const router = express.Router();
 const transactionController = require('../controllers/transactionController');
 
 // Map endpoints to controller operations
+router.delete('/all', transactionController.deleteAllTransactions);
 router.get('/', transactionController.getTransactionHistory);
 router.post('/', transactionController.createTransaction);
 router.delete('/:id', transactionController.deleteTransaction);
