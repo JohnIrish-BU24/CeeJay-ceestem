@@ -4,6 +4,7 @@ import Login from './pages/Login';
 import OwnerTransaction from './pages/OwnerTransaction';
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
+import Services from './pages/Services'; 
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -34,18 +35,22 @@ function App() {
         {/* Protected Owner Routes */}
         <Route 
           path="/transaction" 
-          element={ isAuthenticated ? <OwnerTransaction onLogout={() => setIsAuthenticated(false)} /> : <Navigate to="/" replace /> } 
+          element={ isAuthenticated ? <OwnerTransaction /> : <Navigate to="/" replace /> } 
         />
         
         <Route 
           path="/barangay" 
-          element={ isAuthenticated ? <Barangay onLogout={() => setIsAuthenticated(false)} /> : <Navigate to="/" replace /> } 
+          element={ isAuthenticated ? <Barangay /> : <Navigate to="/" replace /> } 
         />
         
-        {/* FIX: Moved customers safely above the catch-all route */}
         <Route 
           path="/customers" 
-          element={ isAuthenticated ? <Customer onLogout={() => setIsAuthenticated(false)} /> : <Navigate to="/" replace /> } 
+          element={ isAuthenticated ? <Customer /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/services" 
+          element={ isAuthenticated ? <Services /> : <Navigate to="/" replace /> } 
         />
         
         {/* Catch-all route MUST always be at the very bottom */}

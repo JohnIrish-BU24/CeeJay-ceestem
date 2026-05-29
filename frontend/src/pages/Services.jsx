@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Edit2, Trash2, Plus, X } from 'lucide-react';
 
-function Services({ onLogout }) {
+function Services() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -232,7 +232,7 @@ function Services({ onLogout }) {
             <form onSubmit={handleCreateSubmit} style={styles.modalContentFormElement}>
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>SERVICE ID <span style={{color: 'red'}}>*</span></label>
-                <input type="number" required value={newServiceDetails.Serv_ID} onChange={(e) => setNewServiceDetails({...newServiceDetails, Serv_ID: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '20px'}} placeholder="e.g. 3" />
+                <input type="number" min="0" required value={newServiceDetails.Serv_ID} onChange={(e) => setNewServiceDetails({...newServiceDetails, Serv_ID: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '20px'}} placeholder="e.g. 3" />
               </div>
               
               <div style={styles.modalFormInputGroupFieldUnit}>
@@ -242,7 +242,7 @@ function Services({ onLogout }) {
 
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>PRICE (₱) <span style={{color: 'red'}}>*</span></label>
-                <input type="number" step="0.01" required value={newServiceDetails.Price} onChange={(e) => setNewServiceDetails({...newServiceDetails, Price: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '32px'}} placeholder="e.g. 50.00" />
+                <input type="number" step="0.01" min="0" required value={newServiceDetails.Price} onChange={(e) => setNewServiceDetails({...newServiceDetails, Price: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '32px'}} placeholder="e.g. 50.00" />
               </div>
 
               <div style={styles.modalFooterButtonsControlFlexRow}>
@@ -279,7 +279,7 @@ function Services({ onLogout }) {
 
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>PRICE (₱) <span style={{color: 'red'}}>*</span></label>
-                <input type="number" step="0.01" required value={draftServiceEdits.Price} onChange={(e) => setDraftServiceEdits({...draftServiceEdits, Price: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '32px'}} />
+                <input type="number" step="0.01" min="0" required value={draftServiceEdits.Price} onChange={(e) => setDraftServiceEdits({...draftServiceEdits, Price: e.target.value})} style={{...styles.modalActiveInputField, marginBottom: '32px'}} />
               </div>
 
               <div style={styles.modalFooterButtonsControlFlexRow}>
