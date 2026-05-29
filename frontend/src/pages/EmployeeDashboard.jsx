@@ -27,7 +27,7 @@ function RadioOption({ label, value, selected, onSelect, icon }) {
         display: 'flex',
         alignItems: 'center',
         gap: 9,
-        fontSize: 14,
+        fontSize: 16,
         color: selected ? '#1a5c8a' : '#1a3a5a',
         background: selected ? '#fff' : '#f4f9fd',
         userSelect: 'none',
@@ -53,13 +53,13 @@ function SectionCard({ step, icon, title, children }) {
     <div style={{
       background: '#fff',
       borderRadius: 14,
-      padding: '22px 24px',
+      padding: '30px 24px',
       marginBottom: 16,
       border: '0.5px solid #b8d6ea',
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        color: '#1a7ab5', fontSize: 16, fontWeight: 500,
+        color: '#1a7ab5', fontSize: 20, fontWeight: 500,
         borderBottom: '1.5px solid #d0e8f5', paddingBottom: 12, marginBottom: 18,
       }}>
         <div style={{
@@ -78,7 +78,7 @@ function SectionCard({ step, icon, title, children }) {
 function FormGroup({ label, required, children, style }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 140, ...style }}>
-      <label style={{ fontSize: 13, fontWeight: 500, color: '#1a3a5a' }}>
+      <label style={{ fontSize: 16, fontWeight: 500, color: '#1a3a5a' }}>
         {label} {required && <span style={{ color: '#e04040' }}>*</span>}
       </label>
       {children}
@@ -89,8 +89,8 @@ function FormGroup({ label, required, children, style }) {
 const inputStyle = {
   border: '1.5px solid #b8d6ea',
   borderRadius: 8,
-  padding: '9px 13px',
-  fontSize: 14,
+  padding: '13px 13px',
+  fontSize: 16,
   color: '#1a3a5a',
   background: '#f4f9fd',
   outline: 'none',
@@ -105,6 +105,10 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     customerType: 'personal', serviceType: 'walkin',
     quantity: 1, promo: 'no', status: 'paid',
   });
+
+  const updateQty = (delta) => {
+    setForm(f => ({ ...f, quantity: Math.max(1, Number(f.quantity) + delta) }));
+  };
 
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const total = calcTotal(Number(form.quantity), form.serviceType, form.promo);
@@ -220,12 +224,12 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
         {onCancel && (
           <button onClick={onCancel} style={{
             flex: 1, padding: '16px', fontSize: 15, fontWeight: 500, cursor: 'pointer',
-            background: '#fff', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 10,
+            background: '#fff', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 100,
           }}>Cancel</button>
         )}
         <button onClick={() => onSubmit({ ...form, total })} disabled={loading} style={{
           flex: 3, padding: '16px', fontSize: 16, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
-          background: '#1a2a3a', color: '#fff', border: 'none', borderRadius: 10,
+          background: '#03537f', color: '#fff', border: 'none', borderRadius: 100,
           opacity: loading ? 0.7 : 1,
         }}>
           {loading ? 'Submitting…' : 'Submit Transaction'}
@@ -323,26 +327,48 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
   useEffect(() => { fetchToday(); }, []);
 
   // ── Submit new transaction ──
-  const handleSubmit = async (form) => {
-    if (!form.lastName.trim() || !form.firstName.trim()) {
-      alert('Please fill in the customer name.'); return;
+const handleSubmit = async (form) => {
+  if (!form.lastName.trim() || !form.firstName.trim()) {
+    alert('Please fill in the customer name.'); 
+    return;
+  }
+
+  setFormLoading(true);
+  try {
+    // Mapping flat form data to the structure expected by backend
+    const payload = {
+      Trans_ID: Date.now().toString(), // Simple ID generation
+      Cust_ID: "CUST_PLACEHOLDER", // Note: Ensure you have a mechanism to resolve this
+      Trans_Date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      Remarks: form.status === 'paid' ? 'Paid' : 'Unpaid',
+      items: [{
+        Trans_Detail_ID: Date.now().toString(),
+        Serv_ID: form.serviceType === 'delivery' ? 2 : 1, // Ensure these IDs exist in SERVICE_DETAIL
+        Quantity: form.quantity,
+        Selling_Price: form.total,
+        Promo: form.promo === 'yes' ? 'Yes' : 'No'
+      }]
+    };
+
+    const res = await fetch(`${API_BASE}/transaction`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const errorData = await res.json();
+      throw new Error(errorData.error || 'Failed to submit transaction');
     }
-    setFormLoading(true);
-    try {
-      const res = await fetch(`${API_BASE}/transaction`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      });
-      if (!res.ok) throw new Error('Failed to submit transaction');
-      await fetchToday();
-      setView('transactions');
-    } catch (err) {
-      alert(err.message);
-    } finally {
-      setFormLoading(false);
-    }
-  };
+    
+    await fetchToday();
+    setView('transactions');
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setFormLoading(false);
+  }
+};
 
   // ── Update existing transaction ──
   const handleUpdate = async (form) => {
@@ -397,16 +423,16 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
             <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C8 2 5 7 5 12s3 8 7 8 7-3 7-8-3-10-7-10z"/></svg>
           </div>
           <div>
-            <div style={{ color: '#fff', fontSize: 13, fontWeight: 500, lineHeight: 1.2 }}>CeeStem</div>
-            <div style={{ color: '#4ab8e8', fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>Water Refilling</div>
+            <div style={{ color: '#fff', fontSize: 20, fontWeight: 500, lineHeight: 1.2, }}>CeeStem</div>
+            <div style={{ color: '#4ab8e8', fontSize: 18, letterSpacing: 1, textTransform: 'uppercase' }}>Water Refilling</div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => {}} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 20, padding: '7px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <User size={14} /> {refiller}
+          <button onClick={() => {}} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 20, padding: '7px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <User size={25} /> {refiller}
           </button>
-          <button onClick={() => { setView('transactions'); fetchToday(); }} style={{ background: 'transparent', color: '#fff', border: '1.5px solid #fff', borderRadius: 20, padding: '7px 16px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <History size={14} /> View Transaction History
+          <button onClick={() => { setView('transactions'); fetchToday(); }} style={{ background: 'transparent', color: '#fff', border: '1.5px solid #fff', borderRadius: 20, padding: '7px 16px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <History size={25} /> View Transaction History
           </button>
         </div>
       </div>
@@ -434,11 +460,11 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
               </button>
             )}
             {view !== 'transactions' && (
-              <button onClick={() => { setView('transactions'); setEditTarget(null); }} style={{ background: '#f4f9fd', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => { setView('transactions'); setEditTarget(null); }} style={{ background: '#f4f9fd', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 8, padding: '9px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <ChevronLeft size={15} /> Back
               </button>
             )}
-            <button onClick={onSignOut} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button onClick={onSignOut} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
               <LogOut size={15} /> Sign Out
             </button>
           </div>
@@ -446,11 +472,17 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
 
         {/* ── Views ── */}
         {view === 'new' && (
-          <TransactionForm
-            onSubmit={handleSubmit}
-            onCancel={() => setView('transactions')}
-            loading={formLoading}
-          />
+          <div style={{ 
+            maxWidth: '1500px',  // Controls the width of the card
+            margin: '0 auto',   // This centers the element horizontally
+            width: '100%'       // Ensures it doesn't overflow on mobile
+          }}>
+            <TransactionForm
+              onSubmit={handleSubmit}
+              onCancel={() => setView('transactions')}
+              loading={formLoading}
+            />
+          </div>
         )}
 
         {view === 'edit' && editTarget && (
