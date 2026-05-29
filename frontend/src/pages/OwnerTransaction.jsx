@@ -162,6 +162,7 @@ function OwnerTransaction({ onLogout }) {
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
+    else if (menuName === 'Customers') navigate('/customers');
     else alert(`${menuName} page not yet implemented`);
   };
 

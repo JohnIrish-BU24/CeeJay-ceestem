@@ -131,6 +131,7 @@ function Barangay({ onLogout }) {
   // --- Navigation Ribbon Click Handler ---
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
+    else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Barangay') navigate('/barangay');
     else alert(`${menuName} page not yet implemented`);
   };
@@ -167,31 +168,6 @@ function Barangay({ onLogout }) {
           })}
         </div>
       </nav>
-
-<div style={styles.modalFormInputGroupFieldUnit}>
-  <label style={styles.modalFormFieldLabelHeader}>BARANGAY ID <span style={{color: 'red'}}>*</span></label>
-  <input 
-    type="number" 
-    min="0"
-    max="25"
-    required
-    value={newBarangayDetails.Barangay_ID} 
-    onChange={(e) => {
-      let val = e.target.value;
-      if (val !== '') {
-        val = parseInt(val);
-        if (val < 0) val = 0;
-        if (val > 25) val = 25;
-      }
-      setNewBarangayDetails({...newBarangayDetails, Barangay_ID: val});
-    }} 
-    style={{...styles.modalActiveInputField, marginBottom: '20px'}} 
-    placeholder="0 - 25"
-  />
-</div>
-
-
-
 
       {/* ================= WORKSPACE SCREEN BLOCK ================= */}
       <div style={styles.workspaceBodyWrapper}>
@@ -309,10 +285,14 @@ function Barangay({ onLogout }) {
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>BARANGAY ID <span style={{color: 'red'}}>*</span></label>
                 <input 
-                  type="number" 
+                  type="text" 
+                  inputMode="numeric"
                   required
                   value={newBarangayDetails.Barangay_ID} 
-                  onChange={(e) => setNewBarangayDetails({...newBarangayDetails, Barangay_ID: e.target.value})} 
+                  onChange={(e) => {
+                    const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
+                    setNewBarangayDetails({...newBarangayDetails, Barangay_ID: onlyNumbers});
+                  }} 
                   style={{...styles.modalActiveInputField, marginBottom: '20px'}} 
                   placeholder="e.g. 1"
                 />
@@ -333,10 +313,14 @@ function Barangay({ onLogout }) {
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>PUROK <span style={{color: 'red'}}>*</span></label>
                 <input 
-                  type="number" 
+                  type="text" 
+                  inputMode="numeric"
                   required
                   value={newBarangayDetails.Purok} 
-                  onChange={(e) => setNewBarangayDetails({...newBarangayDetails, Purok: e.target.value})} 
+                  onChange={(e) => {
+                    const onlyNumbers = e.target.value.replace(/[^0-9]/g, '');
+                    setNewBarangayDetails({...newBarangayDetails, Purok: onlyNumbers});
+                  }} 
                   style={{...styles.modalActiveInputField, marginBottom: '32px'}} 
                   placeholder="e.g. 1"
                 />
@@ -368,11 +352,16 @@ function Barangay({ onLogout }) {
             <form onSubmit={handleSaveBarangayEdits} style={styles.modalContentFormElement}>
               <div style={styles.modalFormInputGroupFieldUnit}>
                 <label style={styles.modalFormFieldLabelHeader}>BARANGAY ID</label>
-                <input type="text" value={draftBarangayEdits.Barangay_ID} disabled style={{...styles.modalDisabledInputField, marginBottom: '20px'}} />
+                <input 
+                  type="text" 
+                  value={draftBarangayEdits.Barangay_ID} 
+                  disabled 
+                  style={{...styles.modalDisabledInputField, marginBottom: '20px'}} 
+                />
               </div>
               
               <div style={styles.modalFormInputGroupFieldUnit}>
-                <label style={styles.modalFormFieldLabelHeader}>BARANGAY NAME</label>
+                <label style={styles.modalFormFieldLabelHeader}>BARANGAY NAME <span style={{color: 'red'}}>*</span></label>
                 <input 
                   type="text" 
                   required
@@ -383,12 +372,16 @@ function Barangay({ onLogout }) {
               </div>
 
               <div style={styles.modalFormInputGroupFieldUnit}>
-                <label style={styles.modalFormFieldLabelHeader}>PUROK</label>
+                <label style={styles.modalFormFieldLabelHeader}>PUROK <span style={{color: 'red'}}>*</span></label>
                 <input 
-                  type="number" 
+                  type="text" 
+                  inputMode="numeric"
                   required
                   value={draftBarangayEdits.Purok} 
-                  onChange={(e) => setDraftBarangayEdits({...draftBarangayEdits, Purok: e.target.value})} 
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                    setDraftBarangayEdits({...draftBarangayEdits, Purok: numericValue});
+                  }} 
                   style={{...styles.modalActiveInputField, marginBottom: '32px'}} 
                 />
               </div>
@@ -406,7 +399,6 @@ function Barangay({ onLogout }) {
   );
 }
 
-// Exactly matching styles from OwnerTransaction
 const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
