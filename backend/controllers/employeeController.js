@@ -60,3 +60,21 @@ exports.createEmployee = async (req, res) => {
         res.status(500).json({ error: "Database entity insertion failure", details: error.message });
     }
 };
+
+exports.loginEmployee = async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        // Query database for matching Emp_ID and Password
+        const [rows] = await db.query(
+            'SELECT Emp_ID, Role_ID FROM EMPLOYEE WHERE Emp_ID = ? AND Password = ?', 
+            [username, password]
+        );
+        if (rows.length > 0) {
+            res.json({ success: true, role: 'employee', employeeData: rows[0] });
+        } else {
+            res.status(401).json({ success: false, message: "Invalid ID or Password" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};

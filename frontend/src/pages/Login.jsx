@@ -29,14 +29,27 @@ function Login({ onLoginVerify }) {
     setRecoveryEmail('');
   };
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Execute the exact credential check routine mapped out in App.jsx
     if (onLoginVerify) {
-      const response = onLoginVerify(username, password, userType);
-      if (response && !response.success) {
-        alert(response.message);
+      // 1. Call your existing verification logic
+      const response = await onLoginVerify(username, password, userType);
+      
+      if (response && response.success) {
+        // 2. Store the role in localStorage
+        // If userType is employee, we store 'employee', otherwise 'owner'
+        localStorage.setItem('userRole', userType);
+        
+        // 3. Optional: Store specific employee role if needed
+        if (userType === 'employee') {
+          localStorage.setItem('employeeType', employeeRole);
+        }
+        
+        // Navigate or trigger app state change (depending on your App.jsx)
+        alert("Login successful!");
+      } else {
+        alert(response ? response.message : "Login failed.");
       }
     }
   };

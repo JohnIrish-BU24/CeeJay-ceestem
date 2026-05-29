@@ -193,3 +193,31 @@ exports.updateTransaction = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+exports.getTodayTransactions = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT 
+                tr.Trans_ID, tr.Trans_Date, tr.Remarks,
+                CONCAT(c.Cust_LName, ', ', c.Cust_FName) AS Customer,
+                sd.Serv_Name,
+                MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
+                MAX(CASE WHEN wd.Role_ID = 'D' THEN e.Emp_LName END) AS Driver,
+                td.Quantity, td.Selling_Price
+            FROM TRANS_RECORD tr
+            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
+            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
+            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
+            JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
+            JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
+            WHERE DATE(tr.Trans_Date) = CURDATE()
+            GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName, 
+                     sd.Serv_Name, td.Quantity, td.Selling_Price, tr.Remarks
+            ORDER BY tr.Trans_Date DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to retrieve today's logs", details: error.message });
+    }
+};

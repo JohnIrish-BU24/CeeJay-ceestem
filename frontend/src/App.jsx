@@ -5,23 +5,49 @@ import OwnerTransaction from './pages/OwnerTransaction';
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
+import EmployeeDashboard from './pages/EmployeeDashboard';
+
+const employeeCredentials = [
+  { id: 'R1', password: 'ref1', role: 'refiller' },
+  { id: 'R2', password: 'ref2', role: 'refiller' },
+  { id: 'D1', password: 'dri1', role: 'driver' },
+  { id: 'D2', password: 'dri2', role: 'driver' }
+];
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userRole, setUserRole] = useState(null); // Track if owner or employee
 
-  const handleLoginVerify = (email, password, userType) => {
+  const handleLoginVerify = (username, password, userType) => {
     if (userType === 'owner') {
-      if (email === 'ceestem@gmail.com' && password === 'ceestem123') {
+      if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
         setIsAuthenticated(true);
+        setUserRole('owner');
         return { success: true };
-      } else {
-        return { success: false, message: "Invalid Owner credentials!" };
       }
-    } else {
+      return { success: false, message: "Invalid Owner credentials!" };
+    } 
+    
+    // Employee logic
+    const foundEmployee = employeeCredentials.find(
+      (emp) => emp.id === username && emp.password === password
+    );
+
+    if (foundEmployee) {
       setIsAuthenticated(true);
+      setUserRole('employee');
       return { success: true };
     }
+    return { success: false, message: "Invalid Employee ID or Password!" };
   };
+
+  const handleLoginSuccess = (userData) => {
+  if (userData.role === 'employee') {
+    navigate('/employee-dashboard');
+  } else {
+    navigate('/transaction'); // Owner view
+  }
+};
 
   return (
     <Router>
@@ -35,7 +61,11 @@ function App() {
         {/* Protected Owner Routes */}
         <Route 
           path="/transaction" 
-          element={ isAuthenticated ? <OwnerTransaction /> : <Navigate to="/" replace /> } 
+          element={
+            isAuthenticated ? (
+              userRole === 'owner' ? <OwnerTransaction /> : <EmployeeDashboard />
+            ) : <Navigate to="/" replace /> 
+          } 
         />
         
         <Route 
@@ -51,6 +81,15 @@ function App() {
         <Route 
           path="/services" 
           element={ isAuthenticated ? <Services /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/employee" 
+          element={
+            localStorage.getItem('userRole') === 'employee' 
+            ? <EmployeeDashboard /> 
+            : <Navigate to="/login" />
+          } 
         />
         
         {/* Catch-all route MUST always be at the very bottom */}
