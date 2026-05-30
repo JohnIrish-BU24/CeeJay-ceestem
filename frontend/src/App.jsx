@@ -5,6 +5,7 @@ import OwnerTransaction from './pages/OwnerTransaction';
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
+import Reports from './pages/Reports';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -51,6 +52,11 @@ function App() {
         <Route 
           path="/services" 
           element={ isAuthenticated ? <Services /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/reports" 
+          element={ isAuthenticated ? <Reports /> : <Navigate to="/" replace /> } 
         />
         
         {/* Catch-all route MUST always be at the very bottom */}

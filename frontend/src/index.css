@@ -17,7 +17,7 @@
 
   font: 18px/145% var(--sans);
   letter-spacing: 0.18px;
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
@@ -108,4 +108,65 @@ code {
   line-height: 135%;
   padding: 4px 8px;
   background: var(--code-bg);
+}
+
+
+.custom-checkbox {
+  appearance: none;          /* Removes the default browser styling */
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #bde0fe; /* Your app's light blue border color */
+  border-radius: 4px;
+  background-color: #ffffff; /* White background when unchecked */
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+}
+
+/* What it looks like when checked */
+.custom-checkbox:checked {
+  background-color: #0077b6; /* Your app's dark blue brand color */
+  border-color: #0077b6;
+}
+
+/* The white checkmark icon inside */
+.custom-checkbox:checked::after {
+  content: '✔';
+  color: white;
+  font-size: 14px;
+  position: absolute;
+  top: -2px;
+  left: 2px;
+}
+
+/* 1. Base style for the unchecked box */
+.custom-checkbox {
+  appearance: none;          /* Hides standard browser checkbox */
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #bde0fe; /* Border color when UNCHECKED */
+  border-radius: 4px;
+  background-color: #ffffff; /* Background color when UNCHECKED */
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 2. Style for the box when it is CHECKED */
+.custom-checkbox:checked {
+  background-color: #0077b6; /* Background color when CHECKED */
+  border-color: #0077b6;
+}
+
+/* 3. THIS CONTROLS THE CHECKMARK ITSELF */
+.custom-checkbox:checked::after {
+  content: '✔';       /* The actual check symbol. You could change this to 'X' or anything else! */
+  color: #ffffff;     /* THE COLOR OF THE CHECKMARK. Change this to any hex code! */
+  font-size: 15px;    /* Size of the checkmark */
+  font-weight: 1500;   /* Thickness of the checkmark */
+  position: absolute;
 }
