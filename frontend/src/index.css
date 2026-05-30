@@ -109,3 +109,33 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Add to the bottom of index.css */
+.info-tooltip-container {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+
+.info-tooltip-container .tooltip-text {
+  visibility: hidden;
+  position: absolute;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #1a2a3a;
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  width: 180px;
+  z-index: 10;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.info-tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}

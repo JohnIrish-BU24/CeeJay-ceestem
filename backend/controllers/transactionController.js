@@ -60,65 +60,63 @@ exports.getTransactionHistory = async (req, res) => {
 
 // 2. Process a complete Transaction (Creates the master record and the itemized lines)
 exports.createTransaction = async (req, res) => {
-    const { Trans_ID, Cust_ID, Trans_Date, Remarks, items } = req.body;
-
-    // Base validation validation
-    if (!Trans_ID || !Cust_ID || !Trans_Date || !Remarks || !items || !items.length) {
+    // 1. Destructure the data exactly as it is sent from the frontend
+    const { Trans_ID, Trans_Date, Remarks, items, customer } = req.body;
+    
+    console.log("DEBUGGING PAYLOAD:", JSON.stringify(req.body, null, 2));
+    // 2. Validate core data (check inside the 'customer' object)
+    if (!Trans_ID || !customer || !customer.Cust_ID || !items || !items.length) {
         return res.status(400).json({ error: "Missing core transaction data or itemized details." });
     }
 
-    // Business Rule Validation: Enforce allowed check constraint values for payment status
-    const validRemarks = ['Paid', 'Unpaid'];
-    if (!validRemarks.includes(Remarks)) {
-        return res.status(400).json({ error: "Invalid Remarks. Status must strictly be 'Paid' or 'Unpaid'." });
+    if (Remarks !== 'Paid' && Remarks !== 'Unpaid') {
+    return res.status(400).json({ error: "Invalid Status" });
     }
 
-    // We use a Database Transaction here to guarantee data safety. 
-    // If saving an individual item item fails, the entire transaction is rolled back so you don't get partial ghost data rows.
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // Insert into the master record table (TRANS_RECORD)
-        const insertRecordQuery = `
-            INSERT INTO TRANS_RECORD (Trans_ID, Cust_ID, Trans_Date, Remarks) 
-            VALUES (?, ?, ?, ?)
-        `;
-        await connection.query(insertRecordQuery, [Trans_ID, Cust_ID, Trans_Date, Remarks]);
+        // 3. Insert into CUSTOMER
+        await connection.query(
+            `INSERT INTO CUSTOMER (Cust_ID, Barangay_ID, Cust_LName, Cust_FName, Cust_Type) 
+             VALUES (?, ?, ?, ?, ?)`,
+            [customer.Cust_ID, customer.Barangay_ID, customer.Cust_LName, customer.Cust_FName, customer.Cust_Type]
+        );
 
-        // Loop through each item in the request and save it to the detail table (TRANS_DETAIL)
-        const insertDetailQuery = `
-            INSERT INTO TRANS_DETAIL (Trans_Detail_ID, Serv_ID, Trans_ID, Quantity, Selling_Price, Promo) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        `;
-
-        for (let item of items) {
-            // Business Rule Validation: Enforce allowed check constraint values for Promos
-            const validPromo = ['Yes', 'No'];
-            if (!validPromo.includes(item.Promo)) {
-                throw new Error(`Invalid Promo type '${item.Promo}' on detail ID ${item.Trans_Detail_ID}. Must be 'Yes' or 'No'.`);
-            }
-
-            await connection.query(insertDetailQuery, [
-                item.Trans_Detail_ID,
-                item.Serv_ID,
-                Trans_ID, // Link back to our parent receipt ID
-                item.Quantity,
-                item.Selling_Price,
-                item.Promo
-            ]);
+        // 4. Insert into CUSTOMER_NUM
+        for (let num of customer.Contact_Nums) {
+            await connection.query(
+                'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
+                [customer.Cust_ID, num]
+            );
         }
 
-        // If everything completes successfully, lock it into the database permanently
+        // 5. Insert into TRANS_RECORD
+        await connection.query(
+            `INSERT INTO TRANS_RECORD (Trans_ID, Cust_ID, Trans_Date, Remarks) 
+             VALUES (?, ?, ?, ?)`,
+            [Trans_ID, customer.Cust_ID, Trans_Date, Remarks]
+        );
+
+        // 6. Insert into TRANS_DETAIL
+        for (let item of items) {
+            await connection.query(
+                `INSERT INTO TRANS_DETAIL (Trans_Detail_ID, Serv_ID, Trans_ID, Quantity, Selling_Price, Promo) 
+                 VALUES (?, ?, ?, ?, ?, ?)`,
+                [item.Trans_Detail_ID, item.Serv_ID, Trans_ID, item.Quantity, item.Selling_Price, item.Promo]
+            );
+        }
+
         await connection.commit();
-        res.status(201).json({ message: "Transaction and details processed successfully!" });
+        res.status(201).json({ message: "Transaction successful" });
 
     } catch (error) {
-        // Undo all changes changes if any item inside the loop fails
         await connection.rollback();
-        res.status(500).json({ error: "Transaction processing failed. Rollback executed.", details: error.message });
+        console.error("Database error:", error);
+        res.status(500).json({ error: "Transaction failed." });
     } finally {
-        connection.release(); // Return connection back to the pool
+        connection.release();
     }
 };
 
@@ -219,5 +217,15 @@ exports.getTodayTransactions = async (req, res) => {
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve today's logs", details: error.message });
+    }
+};
+
+exports.checkCustomerExists = async (req, res) => {
+    const { custID } = req.params;
+    try {
+        const [rows] = await db.query('SELECT Cust_ID FROM CUSTOMER WHERE Cust_ID = ?', [custID]);
+        res.status(200).json({ exists: rows.length > 0 });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to check database." });
     }
 };

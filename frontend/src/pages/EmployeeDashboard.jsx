@@ -101,23 +101,55 @@ const inputStyle = {
 
 function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState(initial || {
-    lastName: '', firstName: '', barangay: '', purok: '',
-    customerType: 'personal', serviceType: 'walkin',
-    quantity: 1, promo: 'no', status: 'paid',
+    custID: '',
+    barangayID: '',
+    lastName: '',
+    firstName: '',
+    purok: '', // Added this missing field
+    barangay: '', // Added this missing field
+    customerType: 'personal',
+    contactNums: [''],
+    serviceType: 'walkin',
+    quantity: 1,
+    promo: 'no',
+    status: 'paid',
   });
 
   const updateQty = (delta) => {
     setForm(f => ({ ...f, quantity: Math.max(1, Number(f.quantity) + delta) }));
   };
-
+  const isPromo = form.quantity >= 10;
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const total = calcTotal(Number(form.quantity), form.serviceType, form.promo);
+  
+  const checkIDExists = async (id) => {
+    if (!id) return;
+    try {
+      const res = await fetch(`${API_BASE}/check-customer/${id}`);
+      const data = await res.json();
+      if (data.exists) {
+        alert("⚠️ Warning: This Customer ID already exists. Please create a different ID.");
+        set('custID', ''); // This clears the invalid ID
+      }
+    } catch (err) {
+      console.error("Validation failed");
+    }
+  };
 
   return (
     <div>
       {/* Section 1 */}
       <SectionCard step="1" icon={<User size={18} />} title="Customer Information">
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginBottom: 14 }}>
+          <FormGroup label="Customer ID" required>
+            <input 
+              style={inputStyle} 
+              placeholder="e.g. C1" 
+              value={form.custID}
+              onChange={e => set('custID', e.target.value)}
+              onBlur={(e) => checkIDExists(e.target.value)} // <--- Add this here
+            />
+          </FormGroup>
           <FormGroup label="Last Name" required>
             <input style={inputStyle} placeholder="e.g. Dela Cruz" value={form.lastName}
               onChange={e => set('lastName', e.target.value)} />
@@ -136,6 +168,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
             <input style={inputStyle} placeholder="e.g. 1" value={form.purok}
               onChange={e => set('purok', e.target.value)} />
           </FormGroup>
+          
           <FormGroup label="Customer Type" required>
             <div style={{ display: 'flex', gap: 10 }}>
               <RadioOption label="Personal" value="personal"
@@ -144,6 +177,57 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
                 selected={form.customerType === 'reseller'} onSelect={v => set('customerType', v)} />
             </div>
           </FormGroup>
+
+          <FormGroup label="Contact Number(s)" required>
+            {form.contactNums.map((num, index) => (
+              <div key={index} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <input 
+                  style={{ ...inputStyle, flex: 1 }} 
+                  placeholder="09xxxxxxxxx" 
+                  value={num}
+                  onChange={(e) => {
+                    const newNums = [...form.contactNums];
+                    newNums[index] = e.target.value;
+                    set('contactNums', newNums);
+                  }} 
+                />
+                {index > 0 && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      const newNums = form.contactNums.filter((_, i) => i !== index);
+                      set('contactNums', newNums);
+                    }}
+                    // Improved styling for visibility
+                    style={{ 
+                      background: '#fff5f5', // Light red background
+                      border: '1.5px solid #e04040', // Thicker red border
+                      borderRadius: 8, 
+                      cursor: 'pointer', 
+                      padding: '8px 12px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}
+                  >
+                    <Trash2 size={16} color="#e04040" />
+                  </button>
+                )}
+              </div>
+            ))}
+            <button 
+              type="button"
+              onClick={() => set('contactNums', [...form.contactNums, ''])}
+              style={{ 
+                background: '#eaf4fb', border: '1.5px dashed #1a7ab5', 
+                borderRadius: 8, padding: '8px', cursor: 'pointer', color: '#1a7ab5', 
+                fontWeight: 500, width: '100%' 
+              }}
+            >
+              + Add Another Number
+            </button>
+          </FormGroup>
+          
         </div>
       </SectionCard>
 
@@ -168,15 +252,32 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
                 style={{ width: 36, height: 38, border: '1.5px solid #b8d6ea', borderRadius: '8px 0 0 8px', background: '#d0e8f5', color: '#1a5c8a', fontSize: 18, cursor: 'pointer' }}>−</button>
               <input type="number" value={form.quantity} min={1}
                 onChange={e => set('quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                style={{ width: 56, height: 38, border: '1.5px solid #b8d6ea', borderLeft: 'none', borderRight: 'none', textAlign: 'center', fontSize: 15, background: '#fff', color: '#1a3a5a', outline: 'none' }} />
+                style={{ width: 100, height: 38, border: '1.5px solid #b8d6ea', borderLeft: 'none', borderRight: 'none', textAlign: 'center', fontSize: 15, background: '#fff', color: '#1a3a5a', outline: 'none' }} />
               <button onClick={() => set('quantity', Number(form.quantity) + 1)}
                 style={{ width: 36, height: 38, border: '1.5px solid #b8d6ea', borderRadius: '0 8px 8px 0', background: '#d0e8f5', color: '#1a5c8a', fontSize: 18, cursor: 'pointer' }}>+</button>
             </div>
           </FormGroup>
-          <FormGroup label={<>Promo <span title="Promo deducts 1 unit price when qty ≥ 10" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 17, height: 17, borderRadius: '50%', border: '1.5px solid #7ab0d0', color: '#2a7ab5', fontSize: 10, fontWeight: 600, marginLeft: 3, cursor: 'help' }}>i</span></>} required>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <RadioOption label="Yes" value="yes" selected={form.promo === 'yes'} onSelect={v => set('promo', v)} />
-              <RadioOption label="No" value="no" selected={form.promo === 'no'} onSelect={v => set('promo', v)} />
+          <FormGroup label={<>Promo</>} required>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                padding: '10px 16px',
+                borderRadius: 8,
+                fontSize: 14,
+                fontWeight: 600,
+                background: isPromo ? '#c8edda' : '#f4f9fd',
+                border: `1.5px solid ${isPromo ? '#3da96b' : '#b8d6ea'}`,
+                color: isPromo ? '#145c30' : '#6a9ab8'
+              }}>
+                {isPromo ? 'Promo Applied (Get 1 Free gallon)' : 'No Promo Applied'}
+              </div>
+              
+              {/* Info Icon Button */}
+              <div className="info-tooltip-container">
+                <Info size={20} color="#2a7ab5" />
+                <span className="tooltip-text">
+                  Promo is auto-applied when quantity is 10 or greater (Get 1 free container).
+                </span>
+              </div>
             </div>
           </FormGroup>
         </div>
@@ -193,23 +294,23 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
           <FormGroup label="Status" required>
             <div style={{ display: 'flex', gap: 10 }}>
               {/* Paid */}
-              <div onClick={() => set('status', 'paid')} style={{
+              <div onClick={() => set('status', 'Paid')} style={{
                 flex: 1, borderRadius: 10, padding: '10px 16px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500,
-                background: form.status === 'paid' ? '#c8edda' : '#e6f5ee',
-                color: form.status === 'paid' ? '#145c30' : '#1a6b3a',
-                border: `1.5px solid ${form.status === 'paid' ? '#3da96b' : '#7ecfa4'}`,
+                background: form.status === 'Paid' ? '#c8edda' : '#e6f5ee',
+                color: form.status === 'Paid' ? '#145c30' : '#1a6b3a',
+                border: `1.5px solid ${form.status === 'Paid' ? '#3da96b' : '#7ecfa4'}`,
                 transition: 'all 0.15s',
               }}>
                 <CheckCircle size={16} /> Paid
               </div>
               {/* Unpaid */}
-              <div onClick={() => set('status', 'unpaid')} style={{
+              <div onClick={() => set('status', 'Unpaid')} style={{
                 flex: 1, borderRadius: 10, padding: '10px 16px', cursor: 'pointer',
                 display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, fontWeight: 500,
-                background: form.status === 'unpaid' ? '#fbd6d6' : '#fdecea',
-                color: form.status === 'unpaid' ? '#8b2222' : '#b93333',
-                border: `1.5px solid ${form.status === 'unpaid' ? '#e05555' : '#f5a5a5'}`,
+                background: form.status === 'Unpaid' ? '#fbd6d6' : '#fdecea',
+                color: form.status === 'Unpaid' ? '#8b2222' : '#b93333',
+                border: `1.5px solid ${form.status === 'Unpaid' ? '#e05555' : '#f5a5a5'}`,
                 transition: 'all 0.15s',
               }}>
                 <Clock size={16} /> Unpaid
@@ -288,6 +389,39 @@ function TransactionRow({ tx, onEdit, onDelete }) {
   );
 }
 
+const styles = {
+  radioOption: {
+    padding: '10px 14px',
+    border: '1.5px solid #b8d6ea',
+    borderRadius: 10,
+    background: '#f4f9fd',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 9,
+    fontSize: 16,
+    color: '#1a3a5a',
+    transition: 'all 0.15s',
+  },
+  formSection: {
+    background: '#fff',
+    borderRadius: 14,
+    padding: '30px 24px',
+    marginBottom: 16,
+    border: '0.5px solid #b8d6ea',
+  },
+  input: {
+    border: '1.5px solid #b8d6ea',
+    borderRadius: 8,
+    padding: '13px 13px',
+    fontSize: 16,
+    color: '#1a3a5a',
+    background: '#f4f9fd',
+    outline: 'none',
+    width: '95%',
+  }
+};
+
 // ─── Main Dashboard ───────────────────────────────────────────────────────────
 
 export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) {
@@ -333,23 +467,35 @@ const handleSubmit = async (form) => {
     return;
   }
 
-  setFormLoading(true);
+setFormLoading(true);
   try {
-    // Mapping flat form data to the structure expected by backend
     const payload = {
-      Trans_ID: Date.now().toString(), // Simple ID generation
-      Cust_ID: "CUST_PLACEHOLDER", // Note: Ensure you have a mechanism to resolve this
+      // 1. Backend validation looks for these at the top level:
+      Trans_ID: Date.now().toString(),
       Trans_Date: new Date().toISOString().slice(0, 19).replace('T', ' '),
       Remarks: form.status === 'paid' ? 'Paid' : 'Unpaid',
+      
+      // 2. The backend 'if' check looks for this:
+      customer: {
+        Cust_ID: form.custID,
+        Barangay_ID: form.barangayID,
+        Cust_LName: form.lastName,
+        Cust_FName: form.firstName,
+        Cust_Type: form.custType,
+        Contact_Nums: form.contactNums.filter(n => n.trim() !== '')
+      },
+      
+      // 3. The backend 'if' check looks for this:
       items: [{
         Trans_Detail_ID: Date.now().toString(),
-        Serv_ID: form.serviceType === 'delivery' ? 2 : 1, // Ensure these IDs exist in SERVICE_DETAIL
-        Quantity: form.quantity,
+        Serv_ID: form.serviceType === 'delivery' ? 2 : 1,
+        Quantity: Number(form.quantity), // Ensure this is a number
         Selling_Price: form.total,
-        Promo: form.promo === 'yes' ? 'Yes' : 'No'
+        Promo: form.quantity >= 10 ? 'Yes' : 'No'
       }]
     };
 
+// 3. POST to backend
     const res = await fetch(`${API_BASE}/transaction`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -361,6 +507,7 @@ const handleSubmit = async (form) => {
       throw new Error(errorData.error || 'Failed to submit transaction');
     }
     
+    // 4. Reset and Refresh
     await fetchToday();
     setView('transactions');
   } catch (err) {
@@ -455,7 +602,7 @@ const handleSubmit = async (form) => {
           )}
           <div style={{ display: 'flex', gap: 10 }}>
             {view === 'transactions' && (
-              <button onClick={() => setView('new')} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <button onClick={() => { console.log("Button clicked, setting view to 'new'"); setView('new'); }} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Plus size={15} /> New Transaction
               </button>
             )}
@@ -533,4 +680,6 @@ const handleSubmit = async (form) => {
       </div>
     </div>
   );
+
+  
 }
