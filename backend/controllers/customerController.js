@@ -100,10 +100,28 @@ exports.deleteCustomer = async (req, res) => {
 exports.searchCustomer = async (req, res) => {
     const { name } = req.query;
     try {
-        const [rows] = await db.query(
-            "SELECT * FROM CUSTOMER WHERE Cust_LName LIKE ? OR Cust_FName LIKE ?", 
-            [`%${name}%`, `%${name}%`]
-        );
+        const queryText = `
+            SELECT 
+                c.Cust_ID, 
+                c.Barangay_ID, 
+                c.Cust_LName, 
+                c.Cust_FName, 
+                c.Cust_Type, 
+                b.Barangay_Name, 
+                b.Purok,
+                GROUP_CONCAT(cn.Contact_Num SEPARATOR ',') AS Contact_Nums
+            FROM CUSTOMER c
+            JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            WHERE c.Cust_LName LIKE ?
+            GROUP BY c.Cust_ID, b.Barangay_Name, b.Purok
+        `;
+        
+        const [rows] = await db.query(queryText, [`${name}%`]);
         res.json(rows);
-    } catch (err) { res.status(500).json({ error: err.message }); }
+
+    } catch (err) { 
+        console.error("Database Search Error:", err); 
+        res.status(500).json({ error: err.message }); 
+    }
 };

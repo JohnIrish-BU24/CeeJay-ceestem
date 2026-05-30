@@ -133,6 +133,8 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const [isLocked, setIsLocked] = useState(false);        
   const [searchTerm, setSearchTerm] = useState("");       
   const [isSearching, setIsSearching] = useState(false);  
+  const [lockedContactCount, setLockedContactCount] = useState(0);
+  
 
   // ─── 2. YOUR EXISTING FORM STATE (Untouched) ────────────────────────────
   const [form, setForm] = useState(initial || {
@@ -175,10 +177,14 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     }
   };
 
+  const isNameValid = (str) => /^[a-zA-Z\s\-]*$/.test(str);
+  const isNumber = (str) => /^\d*$/.test(str);
+
 
   // ─── 4. THE NEW DATABASE SEARCH LOGIC GOES HERE ─────────────────────────
   useEffect(() => {
-    if (customerMode !== 'existing' || searchTerm.length < 2) {
+    // If not in existing mode, or search is empty, stop
+    if (customerMode !== 'existing' || !searchTerm || searchTerm.length === 0) {
       setSuggestions([]);
       return;
     }
@@ -187,21 +193,25 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
 
     const delayDebounceFn = setTimeout(async () => {
       try {
-        // 📍 Using your API_BASE setup! Make sure this endpoint exists on your backend.
-        const res = await fetch(`${API_BASE}/customers/search?q=${searchTerm}`); 
+        console.log("Searching for:", searchTerm); // 📍 DEBUG: Check console to see if this fires
+        const res = await fetch(`${API_BASE}/customer/search?name=${encodeURIComponent(searchTerm)}`);
+        
         if (res.ok) {
           const data = await res.json();
-          setSuggestions(data); 
+          setSuggestions(Array.isArray(data) ? data : []); 
+        } else {
+          setSuggestions([]);
         }
       } catch (err) {
         console.error("Failed to fetch customers:", err);
+        setSuggestions([]);
       } finally {
         setIsSearching(false); 
       }
     }, 500); 
 
     return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, customerMode]);
+  }, [searchTerm, customerMode]); // searchTerm is the trigger!
 
   // ─── 5. THE POP-UP CHOICE MODAL GOES HERE ───────────────────────────────
   if (!customerMode) {
@@ -240,52 +250,108 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       </style>
 
       {/* Section 1 */}
-      <SectionCard step="1" icon={<User size={18} />} title="Customer Information">
+      <SectionCard step="1" icon={<User size={18} />} title={
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <span>Customer Information {customerMode === 'existing' && <span style={{fontSize: 12, color: '#1a7ab5', background: '#eaf4fb', padding: '2px 8px', borderRadius: 4, marginLeft: 8}}>Existing Mode</span>}</span>
+          
+          {isLocked && (
+            <button onClick={() => { 
+              setIsLocked(false); 
+              setLockedContactCount(0); 
+              set('lastName', ''); 
+              set('firstName', ''); 
+              set('barangay', ''); 
+              set('purok', ''); 
+              set('contactNums', ['']); 
+            }} style={{ fontSize: 12, background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
+              Unlock & Clear
+            </button>
+          )}
+        </div>
+      }>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
           {/* 📍 SMART LAST NAME SEARCH FIELD (CONNECTED TO DB) */}
+          {/* Last Name */}
           <FormGroup label="Last Name" required>
             <div style={{ position: 'relative' }}>
               <input 
                 className="custom-input" 
-                style={{ ...inputStyle, background: isLocked ? '#f8fafc' : inputStyle.background, color: isLocked ? '#94a3b8' : inputStyle.color }} 
-                placeholder={isLocked ? "" : "Search or type..."}
+                style={{ 
+                  ...inputStyle, 
+                  background: isLocked ? '#f8fafc' : inputStyle.background, 
+                  color: isLocked ? '#94a3b8' : inputStyle.color 
+                }} 
+                placeholder="Search or type..." 
                 value={form.lastName} 
                 readOnly={isLocked}
                 onChange={e => {
-                  const val = toTitleCase(e.target.value);
-                  set('lastName', val);
-                  if (!isLocked) setSearchTerm(val); // 📍 Triggers the database search effect!
+                  const val = e.target.value;
+                  
+                  // 1. Only allow valid name characters (Regex from previous step)
+                  if (isNameValid(val)) {
+                    // 2. Set the form state
+                    set('lastName', toTitleCase(val));
+                    
+                    // 3. Set search term immediately if not locked
+                    if (!isLocked) {
+                      setSearchTerm(val);
+                    }
+                  }
                 }} 
               />
-
-              {/* 📍 SHOWS WHILE WAITING FOR DATABASE */}
-              {isSearching && (
-                <div style={{ position: 'absolute', right: 12, top: 12, fontSize: 12, color: '#6a9ab8', fontWeight: 600 }}>
-                  Searching...
-                </div>
-              )}
-
-              {/* 📍 THE DROPDOWN LIST (Populated by your real DB!) */}
+              
+              {/* 📍 DROPDOWN POSITIONED HERE */}
               {suggestions.length > 0 && !isLocked && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, width: '250%', background: '#fff', border: '1px solid #cbe4f4', borderRadius: '10px', marginTop: '6px', zIndex: 100, boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', overflow: 'hidden' }}>
+                <div style={{ 
+                  position: 'absolute', 
+                  top: '100%', 
+                  left: 0, 
+                  width: '150%', // 📍 Change this from 100% to 300% (or fixed pixels like 400px)
+                  background: '#fff', 
+                  border: '1px solid #cbe4f4', 
+                  borderRadius: '10px', 
+                  marginTop: '6px', 
+                  zIndex: 9999, 
+                  boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
+                  overflow: 'hidden' 
+                }}>
                   {suggestions.map((c, i) => (
                     <div key={i} onClick={() => {
-                      // 📍 Auto-fill everything from your database object
-                      set('lastName', c.lastName);
-                      set('firstName', c.firstName);
-                      set('barangay', c.barangay);
-                      set('purok', c.purok);
-                      set('customerType', c.customerType);
-                      set('contactNums', c.contactNums || []);
-                      setSearchTerm(""); // Clear search to hide dropdown
+                      set('custID', c.Cust_ID);
+                      set('barangayID', c.Barangay_ID);
+                      set('lastName', c.Cust_LName);
+                      set('firstName', c.Cust_FName);
+                      set('barangay', c.Barangay_Name);
+                      set('purok', c.Purok);
+                      set('customerType', c.Cust_Type);
+                      
+                      const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
+                      set('contactNums', dbContacts);
+                      setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
+                      
+                      setSearchTerm(""); 
                       setSuggestions([]);
-                      setIsLocked(true); // Lock the inputs
+                      setIsLocked(true);
                     }} 
-                    style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb', fontSize: 13, color: '#102a43', transition: 'background 0.2s' }}
+                    style={{ 
+                      padding: '10px 16px', 
+                      cursor: 'pointer', 
+                      fontSize: 13, 
+                      color: '#102a43',
+                      borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb',
+                      display: 'flex',          // 📍 Keeps content in one line
+                      alignItems: 'center',     // 📍 Vertically aligns everything
+                      gap: '6px'                // 📍 Small space between Name and Barangay
+                    }}
                     onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
                     onMouseOut={e => e.currentTarget.style.background = '#fff'}
                     >
-                      <strong style={{ color: '#1a7ab5' }}>({c.lastName}, {c.firstName})</strong>, {c.barangay}, Purok {c.purok}
+                      <strong style={{ color: '#1a7ab5', whiteSpace: 'nowrap' }}>
+                        ({c.Cust_LName}, {c.Cust_FName})
+                      </strong>
+                      <span style={{ color: '#627d98', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        , {c.Barangay_Name}, Purok {c.Purok}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -293,42 +359,59 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
             </div>
           </FormGroup>
 
+          {/* First Name */}
           <FormGroup label="First Name" required>
             <input 
               className="custom-input" 
-              style={inputStyle} 
+              style={{ 
+                ...inputStyle, 
+                background: isLocked ? '#f8fafc' : inputStyle.background, 
+                color: isLocked ? '#94a3b8' : inputStyle.color 
+              }} 
               placeholder="e.g. Juan" 
               value={form.firstName} 
-              /* 📍 Added auto-formatting here! */
-              onChange={e => set('firstName', toTitleCase(e.target.value))} 
+              readOnly={isLocked}
+              onChange={e => {
+                const val = e.target.value;
+                if (isNameValid(val)) set('firstName', toTitleCase(val));
+              }} 
             />
           </FormGroup>
 
+          {/* Barangay */}
           <FormGroup label="Barangay" required>
             <input 
               className="custom-input" 
-              style={inputStyle} 
+              style={{ 
+                ...inputStyle, 
+                background: isLocked ? '#f8fafc' : inputStyle.background, 
+                color: isLocked ? '#94a3b8' : inputStyle.color 
+              }} 
               placeholder="e.g. Dinoronan" 
               value={form.barangay} 
-              /* 📍 Added auto-formatting here! */
-              onChange={e => set('barangay', toTitleCase(e.target.value))} 
+              readOnly={isLocked}
+              onChange={e => {
+                const val = e.target.value;
+                if (isNameValid(val)) set('barangay', toTitleCase(val));
+              }} 
             />
           </FormGroup>
 
+          {/* Purok */}
           <FormGroup label="Purok" required>
             <input 
               className="custom-input" 
-              style={inputStyle} 
-              type="text"          
-              inputMode="numeric"  
-              pattern="[0-9]*"     
+              style={{ 
+                ...inputStyle, 
+                background: isLocked ? '#f8fafc' : inputStyle.background, 
+                color: isLocked ? '#94a3b8' : inputStyle.color 
+              }} 
               placeholder="e.g. 1" 
               value={form.purok} 
+              readOnly={isLocked}
               onChange={e => {
                 const val = e.target.value;
-                if (val === '' || /^[0-9]+$/.test(val)) {
-                  set('purok', val);
-                }
+                if (isNumber(val)) set('purok', val);
               }} 
             />
           </FormGroup>
@@ -345,36 +428,36 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
           {/* CONTACT NUMBER */}
           <FormGroup label="Contact Number(s)" required>
             {form.contactNums.map((num, index) => {
+              // 1. Determine if this specific box is locked
+              const isContactLocked = isLocked && index < lockedContactCount;
               
-              // 📍 SMART VALIDATION LOGIC
+              // 2. Calculate error regardless of lock state
               let errorMsg = null;
-              if (num.length > 0) {
+              if (num.length > 0 && !isContactLocked) {
                 if (num[0] !== '0' || (num.length >= 2 && !num.startsWith('09'))) {
-                  errorMsg = "Invalid format: Must start with '09'";
+                  errorMsg = "Invalid: Must start with '09'";
                 } else if (num.length < 11) {
-                  errorMsg = `Incomplete: Must be 11 digits (currently ${num.length})`;
+                  errorMsg = `Incomplete: Need ${11 - num.length} more digits`;
                 }
               }
 
               return (
-                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
-                  
-                  {/* 📍 Added alignItems: 'stretch' so the buttons match the input height perfectly! */}
+                <div key={index} style={{ marginBottom: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
                     <input 
                       className="custom-input"
                       style={{ 
-                        ...inputStyle, 
-                        flex: 1, 
-                        margin: 0, /* Prevents browser weirdness */
+                        ...inputStyle, flex: 1, margin: 0,
                         borderColor: errorMsg ? '#ef4444' : '#cbe4f4', 
-                        background: errorMsg ? '#fef2f2' : '#f4f9fd'   
+                        background: isContactLocked ? '#f8fafc' : (errorMsg ? '#fef2f2' : '#f4f9fd'),
+                        color: isContactLocked ? '#94a3b8' : '#102a43'
                       }} 
                       placeholder="09xxxxxxxxx" 
                       value={num}
+                      readOnly={isContactLocked}
                       onChange={(e) => {
                         const val = e.target.value;
-                        if (/^\d*$/.test(val) && val.length <= 11) {
+                        if (isNumber(val) && val.length <= 11) {
                           const newNums = [...form.contactNums];
                           newNums[index] = val;
                           set('contactNums', newNums);
@@ -382,44 +465,29 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
                       }} 
                     />
                     
+                    {/* Add/Remove Buttons */}
                     <div style={{ display: 'flex', gap: '8px' }}>
-                      {/* 📍 UPDATED PLUS BUTTON: Softer borders, perfect square width */}
                       {index === form.contactNums.length - 1 && (
                         <button type="button" onClick={() => set('contactNums', [...form.contactNums, ''])} 
-                          style={{ 
-                            width: 44, boxSizing: 'border-box', margin: 0,
-                            borderRadius: '10px', border: '1px solid #cbe4f4', 
-                            background: '#eaf4fb', cursor: 'pointer', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                            transition: '0.2s' 
-                          }}>
+                          style={{ width: 44, borderRadius: '10px', border: '1px solid #cbe4f4', background: '#eaf4fb', cursor: 'pointer' }}>
                           <Plus size={20} color="#1a7ab5" />
                         </button>
                       )}
-                      
-                      {/* 📍 UPDATED TRASH BUTTON: Matches the red "Unpaid" badge aesthetic */}
-                      {index > 0 && (
+                      {!isContactLocked && index > 0 && (
                         <button type="button" onClick={() => { const newNums = form.contactNums.filter((_, i) => i !== index); set('contactNums', newNums); }} 
-                          style={{ 
-                            width: 44, boxSizing: 'border-box', margin: 0,
-                            borderRadius: '10px', border: '1px solid #fecaca', 
-                            background: '#fee2e2', cursor: 'pointer', 
-                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                            transition: '0.2s' 
-                          }}>
+                          style={{ width: 44, borderRadius: '10px', border: '1px solid #fecaca', background: '#fee2e2', cursor: 'pointer' }}>
                           <Trash2 size={18} color="#ef4444" />
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* 📍 THE LIVE ERROR WARNING MESSAGE */}
+                  {/* 3. Render the warning message directly below the input */}
                   {errorMsg && (
-                    <div style={{ color: '#ef4444', fontSize: '12.5px', fontWeight: 600, paddingLeft: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <Info size={14} /> {errorMsg}
                     </div>
                   )}
-
                 </div>
               );
             })}
