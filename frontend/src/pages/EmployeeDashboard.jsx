@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Edit2, Plus, LogOut, History, User, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, ChevronRight, Truck, PersonStanding, Info } from 'lucide-react';
+import { Trash2, Edit2, Plus, LogOut, History, User, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, ChevronRight, Truck, PersonStanding, Info, MapPin, Phone } from 'lucide-react';
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -352,52 +352,118 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
 
 // ─── Today's Transactions List ────────────────────────────────────────────────
 
-function TransactionRow({ tx, onEdit, onDelete }) {
-  const statusColor = tx.Status === 'paid'
-    ? { bg: '#e6f5ee', color: '#1a6b3a', border: '#7ecfa4' }
-    : { bg: '#fdecea', color: '#b93333', border: '#f5a5a5' };
+// Find this function in your code!
+{/* 📍 NEW 9-COLUMN TRANSACTION ROW */}
+{/* 📍 PERFECTLY ALIGNED TRANSACTION ROW (With Updated Yellow & Blue Theme) */}
+{/* 📍 PERFECTLY CENTERED TRANSACTION ROW */}
+const TransactionRow = ({ tx, onEdit, onDelete }) => {
+  
+  const isReseller = tx.Cust_Type?.toLowerCase() === 'reseller';
+  const isDelivery = tx.Serv_Name?.toLowerCase() === 'delivery';
 
   return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: 12,
-      padding: '12px 16px', borderBottom: '0.5px solid #d0e8f5',
-      background: '#fff', flexWrap: 'wrap',
-    }}>
-      <div style={{ flex: 2, minWidth: 120 }}>
-        <div style={{ fontWeight: 500, color: '#1a3a5a', fontSize: 14 }}>
-          {tx.LastName}, {tx.FirstName}
-        </div>
-        <div style={{ fontSize: 12, color: '#6a9ab8' }}>{tx.Barangay} — Purok {tx.Purok}</div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '16px', borderBottom: '1px solid #eaf4fb' }}>
+      
+      {/* 1. CUSTOMER */}
+      <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 14, color: '#102a43', fontWeight: 600 }}>
+        {tx.Cust_LName || tx.Cust_FName 
+          ? [tx.Cust_LName, tx.Cust_FName].filter(Boolean).join(', ')
+          : 'Walk-in Customer'}
       </div>
-      <div style={{ flex: 1, minWidth: 80, fontSize: 13, color: '#1a5c8a' }}>
-        {tx.ServiceType === 'delivery' ? '🚚 Delivery' : '🚶 Walk-in'}
+
+      {/* 2. CUSTOMER TYPE */}
+      <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center' }}>
+        {tx.Cust_Type && (
+          <span style={{ 
+            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, textTransform: 'capitalize',
+            background: isReseller ? '#fffcdd' : '#eaf1fe', 
+            color: isReseller ? '#a58501' : '#0043d3',      
+            border: `1px solid ${isReseller ? '#f1cc35' : '#b2bdee'}`
+          }}>
+            {tx.Cust_Type}
+          </span>
+        )}
       </div>
-      <div style={{ fontSize: 13, color: '#1a3a5a', minWidth: 60 }}>Qty: {tx.Quantity}</div>
-      <div style={{ fontSize: 14, fontWeight: 500, color: '#1a3a5a', minWidth: 80 }}>₱{Number(tx.TotalAmount).toFixed(2)}</div>
-      <div style={{
-        fontSize: 12, fontWeight: 500, padding: '4px 12px', borderRadius: 20,
-        background: statusColor.bg, color: statusColor.color, border: `1px solid ${statusColor.border}`,
-        minWidth: 60, textAlign: 'center',
-      }}>
-        {tx.Status === 'paid' ? 'Paid' : 'Unpaid'}
+
+      {/* 3. ADDRESS (Added justifyContent: center) */}
+      <div style={{ flex: 1.5, minWidth: 140, fontSize: 13, color: '#486581', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+        {(tx.Purok || tx.Barangay_Name) ? (
+          <>
+            <MapPin size={14} color="#82a5bc" style={{ flexShrink: 0 }} />
+            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {[tx.Purok ? `Purok ${tx.Purok}` : '', tx.Barangay_Name].filter(Boolean).join(', ')}
+            </span>
+          </>
+        ) : <span style={{ color: '#cbd5e1' }}>—</span>}
       </div>
-      <div style={{ display: 'flex', gap: 6 }}>
-        <button onClick={() => onEdit(tx)} style={{
-          width: 32, height: 32, borderRadius: 8, border: '1.5px solid #b8d6ea',
-          background: '#f4f9fd', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+
+      {/* 4. CONTACT (Changed alignItems to center) */}
+      <div style={{ flex: 1.2, minWidth: 120, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
+        {tx.Contact_Nums ? (
+          tx.Contact_Nums.split(',').map((num, index) => (
+            <span 
+              key={index} 
+              style={{ 
+                fontSize: 10, fontWeight: 600, padding: '2px 8px', borderRadius: 20, 
+                background: '#eaf4fb', color: '#1a5c8a', border: '1px solid #b8d6ea', 
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block'
+              }}
+            >
+              {num.trim()}
+            </span>
+          ))
+        ) : (
+          <span style={{ color: '#cbd5e1', fontSize: 13 }}>—</span>
+        )}
+      </div>
+
+      {/* 5. SERVICE TYPE */}
+      <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center' }}>
+        <span style={{ 
+            fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
+            background: isDelivery ? '#f3e8ff' : '#fff3e0', 
+            color: isDelivery ? '#581c87' : '#e65100',
+            border: `1px solid ${isDelivery ? '#d8b4fe' : '#fdba74'}`
+          }}>
+          {tx.Serv_Name}
+        </span>
+      </div>
+
+      {/* 6. QUANTITY */}
+      <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 13, color: '#486581' }}>
+        Qty: {tx.Quantity}
+      </div>
+
+      {/* 7. AMOUNT */}
+      <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#102a43' }}>
+        ₱{Number(tx.Selling_Price || 0).toFixed(2)}
+      </div>
+
+      {/* 8. STATUS */}
+      <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center' }}>
+        <span style={{ 
+          fontSize: 11, fontWeight: 600, padding: '5px 12px', borderRadius: 20, 
+          background: tx.Remarks === 'Paid' ? '#dcfce7' : '#fee2e2', 
+          color: tx.Remarks === 'Paid' ? '#15803d' : '#b91c1c',      
+          border: `1px solid ${tx.Remarks === 'Paid' ? '#bbf7d0' : '#fecaca'}` 
         }}>
-          <Edit2 size={14} color="#2a7ab5" />
+          {tx.Remarks || 'Unpaid'}
+        </span>
+      </div>
+
+      {/* 9. ACTIONS (Added justifyContent: center) */}
+      <div style={{ flex: 0.7, minWidth: 80, display: 'flex', justifyContent: 'center', gap: 8 }}>
+        <button onClick={() => onEdit(tx)} style={{ background: '#fff', border: '1px solid #b8d6ea', borderRadius: 6, cursor: 'pointer', padding: '6px 8px', display: 'flex', alignItems: 'center', color: '#1a5c8a', transition: '0.2s' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
         </button>
-        <button onClick={() => onDelete(tx.Trans_ID)} style={{
-          width: 32, height: 32, borderRadius: 8, border: '1.5px solid #fdd',
-          background: '#fff5f5', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Trash2 size={14} color="#e04040" />
+        <button onClick={() => onDelete(tx.Trans_ID)} style={{ background: '#fff', border: '1px solid #ffcdd2', borderRadius: 6, cursor: 'pointer', padding: '6px 8px', display: 'flex', alignItems: 'center', color: '#d32f2f', transition: '0.2s' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c0-1-2-2-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c0 1 2 1 2 2v2"></path></svg>
         </button>
       </div>
+
     </div>
   );
-}
+};
 
 const styles = {
   radioOption: {
@@ -436,6 +502,7 @@ const styles = {
 
 export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) {
   const [view, setView] = useState('transactions'); // 'transactions' | 'new' | 'edit'
+  
 
   // Remove default browser body/html margins so the app fills edge-to-edge
   useEffect(() => {
@@ -460,6 +527,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
       const res = await fetch(`${API_BASE}/transaction/today`);
       if (!res.ok) throw new Error('Failed to load transactions');
       const data = await res.json();
+      console.log("Raw Database Data:", data);
       setTransactions(data);
     } catch (err) {
       setError(err.message);
@@ -485,10 +553,12 @@ const handleSubmit = async (formData) => {
 
   const generatedCustID = formData.custID || 'C' + Date.now().toString().slice(-6); 
   const generatedTransID = parseInt(Date.now().toString().slice(-9));
+  const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+  const localTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 19).replace('T', ' ');
   
   const payload = {
     Trans_ID: generatedTransID,
-    Trans_Date: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    Trans_Date: localTime,
     Remarks: formData.status.charAt(0).toUpperCase() + formData.status.slice(1), 
     
     // ---> DYNAMIC VARIABLES INJECTED HERE <---
@@ -677,14 +747,17 @@ const handleSubmit = async (formData) => {
 
         {view === 'transactions' && (
           <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #b8d6ea', overflow: 'hidden' }}>
-            {/* Table Header */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: '#eaf4fb', borderBottom: '1.5px solid #d0e8f5', flexWrap: 'wrap' }}>
-              <div style={{ flex: 2, minWidth: 120, fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Customer</div>
-              <div style={{ flex: 1, minWidth: 80, fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Service</div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 60 }}>Qty</div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 80 }}>Amount</div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5, minWidth: 60 }}>Status</div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Actions</div>
+            {/* 📍 NEW 9-COLUMN TABLE HEADER */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', background: '#eaf4fb', borderBottom: '1.5px solid #d0e8f5' }}>
+              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Customer</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Type</div>
+              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Address</div>
+              <div style={{ flex: 1.2, minWidth: 120, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Contact</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Service</div>
+              <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Qty</div>
+              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Status</div>
+              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Actions</div>
             </div>
 
             {loadingList && (
