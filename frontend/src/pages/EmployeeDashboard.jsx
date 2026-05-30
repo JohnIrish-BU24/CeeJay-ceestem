@@ -126,6 +126,15 @@ function FormGroup({ label, required, children, style }) {
 // ─── Transaction Form Component ──────────────────────────────────────────────
 
 function TransactionForm({ initial, onSubmit, onCancel, loading }) {
+  
+  // ─── 1. NEW STATES GO RIGHT AT THE TOP ──────────────────────────────────
+  const [customerMode, setCustomerMode] = useState(null); // 'new' | 'existing' | null
+  const [suggestions, setSuggestions] = useState([]);     
+  const [isLocked, setIsLocked] = useState(false);        
+  const [searchTerm, setSearchTerm] = useState("");       
+  const [isSearching, setIsSearching] = useState(false);  
+
+  // ─── 2. YOUR EXISTING FORM STATE (Untouched) ────────────────────────────
   const [form, setForm] = useState(initial || {
     custID: '',
     barangayID: '',
@@ -142,6 +151,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     total: 0 
   });
 
+  // ─── 3. YOUR EXISTING HELPERS (Untouched) ───────────────────────────────
   const validatePhoneNumber = (num) => {
     const phoneRegex = /^09\d{9}$/;
     return phoneRegex.test(num);
@@ -165,6 +175,53 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     }
   };
 
+
+  // ─── 4. THE NEW DATABASE SEARCH LOGIC GOES HERE ─────────────────────────
+  useEffect(() => {
+    if (customerMode !== 'existing' || searchTerm.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+
+    setIsSearching(true); 
+
+    const delayDebounceFn = setTimeout(async () => {
+      try {
+        // 📍 Using your API_BASE setup! Make sure this endpoint exists on your backend.
+        const res = await fetch(`${API_BASE}/customers/search?q=${searchTerm}`); 
+        if (res.ok) {
+          const data = await res.json();
+          setSuggestions(data); 
+        }
+      } catch (err) {
+        console.error("Failed to fetch customers:", err);
+      } finally {
+        setIsSearching(false); 
+      }
+    }, 500); 
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, customerMode]);
+
+  // ─── 5. THE POP-UP CHOICE MODAL GOES HERE ───────────────────────────────
+  if (!customerMode) {
+    return (
+      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', border: '1px solid #cbe4f4', boxShadow: '0 6px 16px rgba(16, 42, 67, 0.03)', textAlign: 'center', maxWidth: 450, margin: '0 auto' }}>
+        <h2 style={{ color: '#102a43', marginBottom: '8px', fontSize: 22 }}>Select Transaction Type</h2>
+        <p style={{ color: '#6a9ab8', marginBottom: '24px', fontSize: 14 }}>Is this for a new customer or an existing one?</p>
+        <div style={{ display: 'flex', gap: 16 }}>
+          <button onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #1a7ab5', background: '#eaf4fb', color: '#1a7ab5', fontWeight: 600, cursor: 'pointer', transition: '0.2s' }}>
+            New Customer
+          </button>
+          <button onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: 'none', background: '#2a7ab5', color: '#fff', fontWeight: 600, cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 12px rgba(42, 122, 181, 0.2)' }}>
+            Existing Customer
+          </button>
+        </div>
+        <button onClick={onCancel} style={{ marginTop: 24, background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Cancel</button>
+      </div>
+    );
+  }
+
   return (
     <div>
 
@@ -185,15 +242,55 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       {/* Section 1 */}
       <SectionCard step="1" icon={<User size={18} />} title="Customer Information">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          {/* 📍 SMART LAST NAME SEARCH FIELD (CONNECTED TO DB) */}
           <FormGroup label="Last Name" required>
-            <input 
-              className="custom-input" 
-              style={inputStyle} 
-              placeholder="e.g. Dela Cruz" 
-              value={form.lastName} 
-              /* 📍 Added auto-formatting here! */
-              onChange={e => set('lastName', toTitleCase(e.target.value))} 
-            />
+            <div style={{ position: 'relative' }}>
+              <input 
+                className="custom-input" 
+                style={{ ...inputStyle, background: isLocked ? '#f8fafc' : inputStyle.background, color: isLocked ? '#94a3b8' : inputStyle.color }} 
+                placeholder={isLocked ? "" : "Search or type..."}
+                value={form.lastName} 
+                readOnly={isLocked}
+                onChange={e => {
+                  const val = toTitleCase(e.target.value);
+                  set('lastName', val);
+                  if (!isLocked) setSearchTerm(val); // 📍 Triggers the database search effect!
+                }} 
+              />
+
+              {/* 📍 SHOWS WHILE WAITING FOR DATABASE */}
+              {isSearching && (
+                <div style={{ position: 'absolute', right: 12, top: 12, fontSize: 12, color: '#6a9ab8', fontWeight: 600 }}>
+                  Searching...
+                </div>
+              )}
+
+              {/* 📍 THE DROPDOWN LIST (Populated by your real DB!) */}
+              {suggestions.length > 0 && !isLocked && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, width: '250%', background: '#fff', border: '1px solid #cbe4f4', borderRadius: '10px', marginTop: '6px', zIndex: 100, boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', overflow: 'hidden' }}>
+                  {suggestions.map((c, i) => (
+                    <div key={i} onClick={() => {
+                      // 📍 Auto-fill everything from your database object
+                      set('lastName', c.lastName);
+                      set('firstName', c.firstName);
+                      set('barangay', c.barangay);
+                      set('purok', c.purok);
+                      set('customerType', c.customerType);
+                      set('contactNums', c.contactNums || []);
+                      setSearchTerm(""); // Clear search to hide dropdown
+                      setSuggestions([]);
+                      setIsLocked(true); // Lock the inputs
+                    }} 
+                    style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb', fontSize: 13, color: '#102a43', transition: 'background 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
+                    onMouseOut={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <strong style={{ color: '#1a7ab5' }}>({c.lastName}, {c.firstName})</strong>, {c.barangay}, Purok {c.purok}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </FormGroup>
 
           <FormGroup label="First Name" required>
