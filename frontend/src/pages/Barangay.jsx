@@ -136,6 +136,7 @@ function Barangay({ onLogout }) {
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Reports') navigate('/reports');
+    else if (menuName === 'Employees') navigate('/employees');
     else alert(`${menuName} page not yet implemented`);
   };
 
