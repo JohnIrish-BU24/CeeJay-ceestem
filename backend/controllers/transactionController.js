@@ -60,31 +60,72 @@ exports.getTransactionHistory = async (req, res) => {
 
 // 2. Process a complete Transaction (Creates the master record and the itemized lines)
 exports.createTransaction = async (req, res) => {
-    // 1. Destructure the data exactly as it is sent from the frontend
-    const { Trans_ID, Trans_Date, Remarks, items, customer } = req.body;
+    // ==========================================
+    // ---> STEP 3a: ADD roleID TO THIS LIST <---
+    // ==========================================
+    const { Trans_ID, Trans_Date, Remarks, items, customer, empID, roleID } = req.body;
     
-    console.log("DEBUGGING PAYLOAD:", JSON.stringify(req.body, null, 2));
-    // 2. Validate core data (check inside the 'customer' object)
-    if (!Trans_ID || !customer || !customer.Cust_ID || !items || !items.length) {
-        return res.status(400).json({ error: "Missing core transaction data or itemized details." });
-    }
-
-    if (Remarks !== 'Paid' && Remarks !== 'Unpaid') {
-    return res.status(400).json({ error: "Invalid Status" });
-    }
-
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // 3. Insert into CUSTOMER
+        // ==========================================
+        // 1. FIND OR CREATE BARANGAY LOGIC
+        // ==========================================
+        let finalBarangayID = customer.Barangay_ID;
+        
+        // Force conversion and clean up inputs
+        const bName = customer.Barangay_Name ? customer.Barangay_Name.trim() : null;
+        const pNum = customer.Purok ? parseInt(customer.Purok) : null;
+
+        // Log exactly what the backend sees
+        console.log("DEBUG: Processing Barangay. Name:", bName, "Purok:", pNum);
+
+        // Only proceed if we have valid data and need an ID
+        if (!finalBarangayID) {
+            if (bName !== null && pNum !== null && !isNaN(pNum)) {
+                const [rows] = await connection.query(
+                    "SELECT Barangay_ID FROM BARANGAY WHERE TRIM(Barangay_Name) = ? AND Purok = ?", 
+                    [bName, pNum]
+                );
+
+                if (rows.length > 0) {
+                    finalBarangayID = rows[0].Barangay_ID;
+                    console.log("DEBUG: Found existing ID:", finalBarangayID);
+                } else {
+                    finalBarangayID = 'B' + Date.now().toString().slice(-5);
+                    console.log("DEBUG: Creating new Barangay ID:", finalBarangayID);
+                    
+                    await connection.query(
+                        "INSERT INTO BARANGAY (Barangay_ID, Barangay_Name, Purok) VALUES (?, ?, ?)",
+                        [finalBarangayID, bName, pNum]
+                    );
+                }
+            } else {
+                // The frontend sent empty or invalid strings
+                throw new Error(`Invalid Barangay Data from frontend: Name='${bName}', Purok='${pNum}'`);
+            }
+        }
+
+        // ==========================================
+        // 2. FAIL-SAFE VALIDATION
+        // ==========================================
+        if (!finalBarangayID) {
+            throw new Error("Validation Error: Could not assign a valid Barangay_ID.");
+        }
+
+        // ==========================================
+        // 3. INSERT INTO CUSTOMER
+        // ==========================================
         await connection.query(
             `INSERT INTO CUSTOMER (Cust_ID, Barangay_ID, Cust_LName, Cust_FName, Cust_Type) 
              VALUES (?, ?, ?, ?, ?)`,
-            [customer.Cust_ID, customer.Barangay_ID, customer.Cust_LName, customer.Cust_FName, customer.Cust_Type]
+            [customer.Cust_ID, finalBarangayID, customer.Cust_LName, customer.Cust_FName, customer.Cust_Type]
         );
 
-        // 4. Insert into CUSTOMER_NUM
+        // ==========================================
+        // 4. INSERT INTO CUSTOMER_NUM
+        // ==========================================
         for (let num of customer.Contact_Nums) {
             await connection.query(
                 'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
@@ -92,14 +133,18 @@ exports.createTransaction = async (req, res) => {
             );
         }
 
-        // 5. Insert into TRANS_RECORD
+        // ==========================================
+        // 5. INSERT INTO TRANS_RECORD
+        // ==========================================
         await connection.query(
             `INSERT INTO TRANS_RECORD (Trans_ID, Cust_ID, Trans_Date, Remarks) 
              VALUES (?, ?, ?, ?)`,
             [Trans_ID, customer.Cust_ID, Trans_Date, Remarks]
         );
 
-        // 6. Insert into TRANS_DETAIL
+        // ==========================================
+        // 6. INSERT INTO TRANS_DETAIL
+        // ==========================================
         for (let item of items) {
             await connection.query(
                 `INSERT INTO TRANS_DETAIL (Trans_Detail_ID, Serv_ID, Trans_ID, Quantity, Selling_Price, Promo) 
@@ -108,13 +153,24 @@ exports.createTransaction = async (req, res) => {
             );
         }
 
+        // ==========================================
+        // 7. INSERT INTO WORK_DETAIL
+        // ==========================================
+        await connection.query(
+            `INSERT INTO WORK_DETAIL (Trans_ID, Emp_ID, Role_ID) VALUES (?, ?, ?)`,
+            // ==========================================
+            // ---> STEP 3b: REPLACE 'R' WITH roleID <---
+            // ==========================================
+            [Trans_ID, empID, roleID]
+        );
+
         await connection.commit();
         res.status(201).json({ message: "Transaction successful" });
 
     } catch (error) {
         await connection.rollback();
         console.error("Database error:", error);
-        res.status(500).json({ error: "Transaction failed." });
+        res.status(500).json({ error: error.message || "Transaction failed." });
     } finally {
         connection.release();
     }

@@ -139,3 +139,40 @@ code {
   visibility: visible;
   opacity: 1;
 }
+
+input::placeholder {
+  color: #c9d5e4 !important; /* A soft, light gray */
+  opacity: 1;              /* Ensures the color renders correctly across browsers */
+}
+
+.status-radio-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px; /* Reduced from 10px 20px for a more compact look */
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;  /* Smaller font makes the button feel less "heavy" */
+  font-weight: 500;
+  min-width: 100px; /* Limits how small they can be, but keeps them tidy */
+  transition: all 0.2s ease;
+}
+
+/* "Paid" Active State */
+.status-radio-input:checked + .paid-label {
+  background-color: #e6f4ea;
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+
+/* "Unpaid" Active State */
+.status-radio-input:checked + .unpaid-label {
+  background-color: #fff3f0;
+  border-color: #d84315;
+  color: #d84315;
+}
+
+.status-radio-input {
+  display: none; /* Hide the default radio circle */
+}

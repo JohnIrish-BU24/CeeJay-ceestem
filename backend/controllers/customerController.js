@@ -97,3 +97,13 @@ exports.deleteCustomer = async (req, res) => {
         res.status(500).json({ error: "Failed to complete deletion process", details: error.message });
     }
 };
+exports.searchCustomer = async (req, res) => {
+    const { name } = req.query;
+    try {
+        const [rows] = await db.query(
+            "SELECT * FROM CUSTOMER WHERE Cust_LName LIKE ? OR Cust_FName LIKE ?", 
+            [`%${name}%`, `%${name}%`]
+        );
+        res.json(rows);
+    } catch (err) { res.status(500).json({ error: err.message }); }
+};

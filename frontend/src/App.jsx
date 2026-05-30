@@ -19,35 +19,44 @@ function App() {
   const [userRole, setUserRole] = useState(null); // Track if owner or employee
 
   const handleLoginVerify = (username, password, userType) => {
-    if (userType === 'owner') {
-      if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
+      if (userType === 'owner') {
+        if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
+          setIsAuthenticated(true);
+          setUserRole('owner');
+          // Optional: Save owner role to localStorage so they don't get logged out on refresh
+          localStorage.setItem('userRole', 'owner'); 
+          return { success: true };
+        }
+        return { success: false, message: "Invalid Owner credentials!" };
+      } 
+      
+      // Employee logic
+      const foundEmployee = employeeCredentials.find(
+        (emp) => emp.id === username && emp.password === password
+      );
+
+      if (foundEmployee) {
+        // ==========================================
+        // INSERT THE LOCALSTORAGE SAVING LOGIC HERE
+        // ==========================================
+        const loggedInUser = {
+          id: foundEmployee.id,
+          role: foundEmployee.role === 'refiller' ? 'R' : 'D' 
+        };
+        
+        // Save the specific employee ID and role for the database
+        localStorage.setItem('activeEmployee', JSON.stringify(loggedInUser));
+        
+        // Save the generic user type so your protected routes work correctly!
+        localStorage.setItem('userRole', 'employee'); 
+        // ==========================================
+
         setIsAuthenticated(true);
-        setUserRole('owner');
+        setUserRole('employee');
         return { success: true };
       }
-      return { success: false, message: "Invalid Owner credentials!" };
-    } 
-    
-    // Employee logic
-    const foundEmployee = employeeCredentials.find(
-      (emp) => emp.id === username && emp.password === password
-    );
-
-    if (foundEmployee) {
-      setIsAuthenticated(true);
-      setUserRole('employee');
-      return { success: true };
-    }
-    return { success: false, message: "Invalid Employee ID or Password!" };
-  };
-
-  const handleLoginSuccess = (userData) => {
-  if (userData.role === 'employee') {
-    navigate('/employee-dashboard');
-  } else {
-    navigate('/transaction'); // Owner view
-  }
-};
+      return { success: false, message: "Invalid Employee ID or Password!" };
+    };
 
   return (
     <Router>
