@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import OwnerTransaction from './pages/OwnerTransaction';
+import Transaction from './pages/Transaction';
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
+import Employees from './pages/Employees';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -35,7 +36,7 @@ function App() {
         {/* Protected Owner Routes */}
         <Route 
           path="/transaction" 
-          element={ isAuthenticated ? <OwnerTransaction /> : <Navigate to="/" replace /> } 
+          element={ isAuthenticated ? <Transaction /> : <Navigate to="/" replace /> } 
         />
         
         <Route 
@@ -51,6 +52,11 @@ function App() {
         <Route 
           path="/services" 
           element={ isAuthenticated ? <Services /> : <Navigate to="/" replace /> } 
+        />
+        
+        <Route 
+          path="/employees" 
+          element={ isAuthenticated ? <Employees /> : <Navigate to="/" replace /> } 
         />
         
         {/* Catch-all route MUST always be at the very bottom */}

@@ -113,6 +113,7 @@ function Services() {
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
+    else if (menuName === 'Employees') navigate('/employees');
     else alert(`${menuName} page not yet implemented`);
   };
 

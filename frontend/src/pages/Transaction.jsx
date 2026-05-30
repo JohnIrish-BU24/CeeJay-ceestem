@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-function OwnerTransaction({ onLogout }) {
+function Transaction({ onLogout }) {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -164,6 +164,7 @@ function OwnerTransaction({ onLogout }) {
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
+    else if (menuName === 'Employees') navigate('/employees');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -487,4 +488,4 @@ const styles = {
   modalPrimaryActionSaveButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px 32px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.25)' }
 };
 
-export default OwnerTransaction;
+export default Transaction;
