@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Edit2, Plus, LogOut, History, User, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, ChevronRight, Truck, PersonStanding, Info, MapPin, Phone } from 'lucide-react';
+import { Trash2, Edit2, Plus, LogOut, History, User, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, Truck, PersonStanding, Info, MapPin } from 'lucide-react';
+
+// 📍 Import your logo here!
+import logoImg from '../assets/logo.png'; 
 
 const API_BASE = 'http://localhost:5000/api';
 
@@ -12,7 +15,28 @@ const calcTotal = (qty, serviceType, promo) => {
   return total;
 };
 
-// ─── Sub-components ──────────────────────────────────────────────────────────
+const toTitleCase = (str) => {
+  if (!str) return '';
+  return str
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+// ─── Form Styles & Sub-components ───────────────────────────────────────────
+
+const inputStyle = {
+  border: '1px solid #cbe4f4',
+  borderRadius: '10px',
+  padding: '12px 14px',
+  fontSize: '14px',
+  width: '100%',
+  boxSizing: 'border-box',
+  color: '#102a43',
+  background: '#f4f9fd',
+  outline: 'none',
+  transition: 'border 0.2s',
+};
 
 function RadioOption({ label, value, selected, onSelect, icon }) {
   return (
@@ -21,25 +45,29 @@ function RadioOption({ label, value, selected, onSelect, icon }) {
       style={{
         flex: 1,
         minWidth: 130,
-        border: selected ? '1.5px solid #1a7ab5' : '1.5px solid #b8d6ea',
-        borderRadius: 10,
+        boxSizing: 'border-box', /* 📍 Ensures padding/borders don't stretch the box */
+        border: `1px solid ${selected ? '#1a7ab5' : '#cbe4f4'}`, /* 📍 FIXED: Locked to 1px always */
+        borderRadius: '10px',
         padding: '10px 14px',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
         gap: 9,
-        fontSize: 16,
-        color: selected ? '#1a5c8a' : '#1a3a5a',
-        background: selected ? '#fff' : '#f4f9fd',
+        fontSize: '14px',
+        fontWeight: 600, /* 📍 FIXED: Locked to 600 always so the words don't stretch */
+        color: selected ? '#1a5c8a' : '#475569',
+        background: selected ? '#eaf4fb' : '#ffffff',
         userSelect: 'none',
         transition: 'all 0.15s',
       }}
     >
       <div style={{
         width: 18, height: 18, borderRadius: '50%',
-        border: `2px solid ${selected ? '#1a7ab5' : '#b8d6ea'}`,
+        boxSizing: 'border-box',
+        border: `2px solid ${selected ? '#1a7ab5' : '#cbe4f4'}`,
         flexShrink: 0,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: '#fff'
       }}>
         {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#1a7ab5' }} />}
       </div>
@@ -52,23 +80,31 @@ function RadioOption({ label, value, selected, onSelect, icon }) {
 function SectionCard({ step, icon, title, children }) {
   return (
     <div style={{
-      background: '#fff',
-      borderRadius: 14,
-      padding: '30px 24px',
-      marginBottom: 16,
-      border: '0.5px solid #b8d6ea',
+      background: '#ffffff',
+      borderRadius: '16px',
+      padding: '24px',
+      marginBottom: '20px',
+      
+      /* 📍 UPDATED BORDER: Now matches the crisp, thin blue of your input boxes */
+      border: '1px solid #cbe4f4',
+      
+      boxShadow: '0 6px 16px rgba(16, 42, 67, 0.03), 0 2px 4px rgba(16, 42, 67, 0.015)' 
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 10,
-        color: '#1a7ab5', fontSize: 20, fontWeight: 500,
-        borderBottom: '1.5px solid #d0e8f5', paddingBottom: 12, marginBottom: 18,
+        color: '#102a43', fontSize: 18, fontWeight: 600,
+        
+        /* 📍 I also updated this divider line to match so the aesthetic stays 100% consistent! */
+        borderBottom: '1px solid #cbe4f4', 
+        
+        paddingBottom: 12, marginBottom: 18,
       }}>
         <div style={{
-          width: 28, height: 28, background: '#1a7ab5', color: '#fff',
+          width: 28, height: 28, background: '#eaf4fb', color: '#1a7ab5',
           borderRadius: '50%', display: 'flex', alignItems: 'center',
-          justifyContent: 'center', fontSize: 14, fontWeight: 500, flexShrink: 0,
+          justifyContent: 'center', fontSize: 14, fontWeight: 600, flexShrink: 0,
         }}>{step}</div>
-        {icon}
+        {icon && React.cloneElement(icon, { color: '#1a7ab5' })}
         {title} <span style={{ color: '#e04040' }}>*</span>
       </div>
       {children}
@@ -76,10 +112,10 @@ function SectionCard({ step, icon, title, children }) {
   );
 }
 
-function FormGroup({ label, required, children }) {
+function FormGroup({ label, required, children, style }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-      <label style={{ fontSize: '14px', fontWeight: '600', color: '#333' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '8px', ...style }}>
+      <label style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>
         {label} {required && <span style={{ color: '#e04040' }}>*</span>}
       </label>
       {children}
@@ -87,18 +123,7 @@ function FormGroup({ label, required, children }) {
   );
 }
 
-const inputStyle = {
-  border: '1.5px solid #b8d6ea',
-  borderRadius: 8,
-  padding: '12px',
-  fontSize: '16px',
-  width: '100%',            // Fills the grid cell perfectly
-  boxSizing: 'border-box',  // Prevents padding from breaking the width
-  color: '#1a3a5a',
-  background: '#f4f9fd',
-};
-
-// ─── Transaction Form Modal / Inline ─────────────────────────────────────────
+// ─── Transaction Form Component ──────────────────────────────────────────────
 
 function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const [form, setForm] = useState(initial || {
@@ -107,25 +132,21 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     lastName: '',
     firstName: '',
     purok: '',
-    barangay: '', // Used for "Barangay_Name" in your backend lookup
+    barangay: '', 
     customerType: 'Personal',
     contactNums: [''],
     serviceType: 'walkin',
     quantity: 1,
     promo: 'no',
     status: 'paid',
-    total: 0 // Added this, as your payload uses form.total
+    total: 0 
   });
 
   const validatePhoneNumber = (num) => {
-    // Regex: starts with 09, followed by exactly 9 digits (total 11)
     const phoneRegex = /^09\d{9}$/;
     return phoneRegex.test(num);
   };
 
-  const updateQty = (delta) => {
-    setForm(f => ({ ...f, quantity: Math.max(1, Number(f.quantity) + delta) }));
-  };
   const isPromo = form.quantity >= 10;
   const set = (key, val) => setForm(f => ({ ...f, [key]: val }));
   const total = calcTotal(Number(form.quantity), form.serviceType, form.promo);
@@ -137,7 +158,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       const data = await res.json();
       if (data.exists) {
         alert("⚠️ Warning: This Customer ID already exists. Please create a different ID.");
-        set('custID', ''); // This clears the invalid ID
+        set('custID', ''); 
       }
     } catch (err) {
       console.error("Validation failed");
@@ -146,218 +167,306 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
 
   return (
     <div>
-      {/* Section 1 */}
-<SectionCard step="1" icon={<User size={18} />} title="Customer Information">
-  {/* ROW 1: 4 columns for Name, Barangay, Purok */}
-  <div style={{ 
-    display: 'grid', 
-    gridTemplateColumns: 'repeat(4, 1fr)', 
-    gap: '16px', 
-    marginBottom: '16px' 
-  }}>
-    <FormGroup label="Last Name" required><input className="custom-input" style={inputStyle} placeholder="e.g. Dela Cruz" value={form.lastName} onChange={e => set('lastName', e.target.value)} /></FormGroup>
-    <FormGroup label="First Name" required><input className="custom-input" style={inputStyle} placeholder="e.g. Juan" value={form.firstName} onChange={e => set('firstName', e.target.value)} /></FormGroup>
-    <FormGroup label="Barangay" required><input className="custom-input" style={inputStyle} placeholder="e.g. Dinoronan" value={form.barangay} onChange={e => set('barangay', e.target.value)} /></FormGroup>
-    <FormGroup label="Purok" required>
-      <input 
-        className="custom-input" 
-        style={inputStyle} 
-        type="number" // <--- Force number input
-        min="1"       // <--- Optional: prevent negative puroks
-        placeholder="e.g. 1" 
-        value={form.purok} 
-        onChange={e => {
-          // Only allow numeric input (or empty)
-          const val = e.target.value;
-          if (val === '' || /^\d+$/.test(val)) {
-            set('purok', val);
+
+      <style>
+        {`
+          input[type="number"]::-webkit-outer-spin-button,
+          input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
           }
-        }} 
-      />
-    </FormGroup>
-  </div>
+          input[type="number"] {
+            -moz-appearance: textfield;
+            appearance: textfield;
+          }
+        `}
+      </style>
 
-    {/* ROW 2: Adjusted grid for better width balance */}
-    <div style={{ 
-      display: 'grid', 
-      gridTemplateColumns: '1fr 0.8fr', // Customer Type gets 1 fraction, Contacts get 0.8
-      gap: '24px',
-      alignItems: 'start'
-    }}>
-      
-      {/* Customer Type: Now takes up more proportional space */}
-      <FormGroup label="Customer Type" required>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <RadioOption label="Personal" value="Personal" selected={form.customerType === 'Personal'} onSelect={v => set('customerType', v)} />
-          <RadioOption label="Reseller" value="Reseller" selected={form.customerType === 'Reseller'} onSelect={v => set('customerType', v)} />
-        </div>
-      </FormGroup>
-
-      {/* Contact Numbers: Now slightly shorter/more constrained */}
-      <FormGroup label="Contact Number(s)" required>
-        {form.contactNums.map((num, index) => (
-          <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
+      {/* Section 1 */}
+      <SectionCard step="1" icon={<User size={18} />} title="Customer Information">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
+          <FormGroup label="Last Name" required>
             <input 
-              className="custom-input"
-              style={{ 
-                ...inputStyle, 
-                flex: 1, // Will shrink to fit the smaller column
-                borderColor: (num !== '' && !/^09\d{9}$/.test(num)) ? '#e04040' : '#b8d6ea'
-              }} 
-              placeholder="09xxxxxxxxx" 
-              value={num}
-              onChange={(e) => {
+              className="custom-input" 
+              style={inputStyle} 
+              placeholder="e.g. Dela Cruz" 
+              value={form.lastName} 
+              /* 📍 Added auto-formatting here! */
+              onChange={e => set('lastName', toTitleCase(e.target.value))} 
+            />
+          </FormGroup>
+
+          <FormGroup label="First Name" required>
+            <input 
+              className="custom-input" 
+              style={inputStyle} 
+              placeholder="e.g. Juan" 
+              value={form.firstName} 
+              /* 📍 Added auto-formatting here! */
+              onChange={e => set('firstName', toTitleCase(e.target.value))} 
+            />
+          </FormGroup>
+
+          <FormGroup label="Barangay" required>
+            <input 
+              className="custom-input" 
+              style={inputStyle} 
+              placeholder="e.g. Dinoronan" 
+              value={form.barangay} 
+              /* 📍 Added auto-formatting here! */
+              onChange={e => set('barangay', toTitleCase(e.target.value))} 
+            />
+          </FormGroup>
+
+          <FormGroup label="Purok" required>
+            <input 
+              className="custom-input" 
+              style={inputStyle} 
+              type="text"          
+              inputMode="numeric"  
+              pattern="[0-9]*"     
+              placeholder="e.g. 1" 
+              value={form.purok} 
+              onChange={e => {
                 const val = e.target.value;
-                if (/^\d*$/.test(val) && val.length <= 11) {
-                  const newNums = [...form.contactNums];
-                  newNums[index] = val;
-                  set('contactNums', newNums);
+                if (val === '' || /^[0-9]+$/.test(val)) {
+                  set('purok', val);
                 }
               }} 
             />
-            
-            {/* Buttons remain same layout for uniformity */}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              {index === form.contactNums.length - 1 && (
-                <button type="button" onClick={() => set('contactNums', [...form.contactNums, ''])} style={{ padding: '10px 12px', borderRadius: 8, border: '1.5px solid #1a7ab5', background: '#eaf4fb', cursor: 'pointer', height: '46px', display: 'flex', alignItems: 'center' }}><Plus size={18} color="#1a7ab5" /></button>
-              )}
-              {index > 0 && (
-                <button type="button" onClick={() => { const newNums = form.contactNums.filter((_, i) => i !== index); set('contactNums', newNums); }} style={{ padding: '10px 12px', borderRadius: 8, border: '1.5px solid #e04040', background: '#fff5f5', cursor: 'pointer', height: '46px', display: 'flex', alignItems: 'center' }}><Trash2 size={18} color="#e04040" /></button>
-              )}
+          </FormGroup>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 0.8fr', gap: '24px', alignItems: 'start' }}>
+          <FormGroup label="Customer Type" required>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <RadioOption label="Personal" value="Personal" selected={form.customerType === 'Personal'} onSelect={v => set('customerType', v)} />
+              <RadioOption label="Reseller" value="Reseller" selected={form.customerType === 'Reseller'} onSelect={v => set('customerType', v)} />
             </div>
-          </div>
-        ))}
-      </FormGroup>
-    </div>
-</SectionCard>
+          </FormGroup>
+
+          {/* CONTACT NUMBER */}
+          <FormGroup label="Contact Number(s)" required>
+            {form.contactNums.map((num, index) => {
+              
+              // 📍 SMART VALIDATION LOGIC
+              let errorMsg = null;
+              if (num.length > 0) {
+                if (num[0] !== '0' || (num.length >= 2 && !num.startsWith('09'))) {
+                  errorMsg = "Invalid format: Must start with '09'";
+                } else if (num.length < 11) {
+                  errorMsg = `Incomplete: Must be 11 digits (currently ${num.length})`;
+                }
+              }
+
+              return (
+                <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                  
+                  {/* 📍 Added alignItems: 'stretch' so the buttons match the input height perfectly! */}
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'stretch' }}>
+                    <input 
+                      className="custom-input"
+                      style={{ 
+                        ...inputStyle, 
+                        flex: 1, 
+                        margin: 0, /* Prevents browser weirdness */
+                        borderColor: errorMsg ? '#ef4444' : '#cbe4f4', 
+                        background: errorMsg ? '#fef2f2' : '#f4f9fd'   
+                      }} 
+                      placeholder="09xxxxxxxxx" 
+                      value={num}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (/^\d*$/.test(val) && val.length <= 11) {
+                          const newNums = [...form.contactNums];
+                          newNums[index] = val;
+                          set('contactNums', newNums);
+                        }
+                      }} 
+                    />
+                    
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {/* 📍 UPDATED PLUS BUTTON: Softer borders, perfect square width */}
+                      {index === form.contactNums.length - 1 && (
+                        <button type="button" onClick={() => set('contactNums', [...form.contactNums, ''])} 
+                          style={{ 
+                            width: 44, boxSizing: 'border-box', margin: 0,
+                            borderRadius: '10px', border: '1px solid #cbe4f4', 
+                            background: '#eaf4fb', cursor: 'pointer', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            transition: '0.2s' 
+                          }}>
+                          <Plus size={20} color="#1a7ab5" />
+                        </button>
+                      )}
+                      
+                      {/* 📍 UPDATED TRASH BUTTON: Matches the red "Unpaid" badge aesthetic */}
+                      {index > 0 && (
+                        <button type="button" onClick={() => { const newNums = form.contactNums.filter((_, i) => i !== index); set('contactNums', newNums); }} 
+                          style={{ 
+                            width: 44, boxSizing: 'border-box', margin: 0,
+                            borderRadius: '10px', border: '1px solid #fecaca', 
+                            background: '#fee2e2', cursor: 'pointer', 
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                            transition: '0.2s' 
+                          }}>
+                          <Trash2 size={18} color="#ef4444" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 📍 THE LIVE ERROR WARNING MESSAGE */}
+                  {errorMsg && (
+                    <div style={{ color: '#ef4444', fontSize: '12.5px', fontWeight: 600, paddingLeft: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Info size={14} /> {errorMsg}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
+          </FormGroup>
+        </div>
+      </SectionCard>
 
       {/* Section 2 */}
       <SectionCard step="2" icon={<Settings size={18} />} title="Service Selection">
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <RadioOption label="Walk-in (₱30.00)" value="walkin"
-            selected={form.serviceType === 'walkin'} onSelect={v => set('serviceType', v)}
-            icon={<PersonStanding size={16} />} />
-          <RadioOption label="Delivery (₱35.00)" value="delivery"
-            selected={form.serviceType === 'delivery'} onSelect={v => set('serviceType', v)}
-            icon={<Truck size={16} />} />
+          <RadioOption label="Walk-in (₱30.00)" value="walkin" selected={form.serviceType === 'walkin'} onSelect={v => set('serviceType', v)} icon={<PersonStanding size={18} />} />
+          <RadioOption label="Delivery (₱35.00)" value="delivery" selected={form.serviceType === 'delivery'} onSelect={v => set('serviceType', v)} icon={<Truck size={18} />} />
         </div>
       </SectionCard>
 
-      {/* Section 3 */}
-      <SectionCard step="3" icon={<FileText size={18} />} title="Transaction Details">
-        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <FormGroup label="Quantity" required style={{ maxWidth: 400 }}>
-            <div style={{ display: 'flex' }}>
-              <button onClick={() => set('quantity', Math.max(1, Number(form.quantity) - 1))}
-                style={{ width: 36, height: 38, border: '1.5px solid #b8d6ea', borderRadius: '8px 0 0 8px', background: '#d0e8f5', color: '#1a5c8a', fontSize: 18, cursor: 'pointer' }}>−</button>
-              <input type="number" value={form.quantity} min={1}
-                onChange={e => set('quantity', Math.max(1, parseInt(e.target.value) || 1))}
-                style={{ width: 100, height: 38, border: '1.5px solid #b8d6ea', borderLeft: 'none', borderRight: 'none', textAlign: 'center', fontSize: 15, background: '#fff', color: '#1a3a5a', outline: 'none' }} />
-              <button onClick={() => set('quantity', Number(form.quantity) + 1)}
-                style={{ width: 36, height: 38, border: '1.5px solid #b8d6ea', borderRadius: '0 8px 8px 0', background: '#d0e8f5', color: '#1a5c8a', fontSize: 18, cursor: 'pointer' }}>+</button>
-            </div>
-          </FormGroup>
-          <FormGroup label={<>Promo</>} required>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{
-                padding: '10px 16px',
-                borderRadius: 8,
-                fontSize: 14,
-                fontWeight: 600,
-                background: isPromo ? '#c8edda' : '#f4f9fd',
-                border: `1.5px solid ${isPromo ? '#3da96b' : '#b8d6ea'}`,
-                color: isPromo ? '#145c30' : '#6a9ab8'
-              }}>
+      {/* 📍 SIDE-BY-SIDE WRAPPER FOR SECTIONS 3 & 4 */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+        
+        {/* Section 3 */}
+        <SectionCard step="3" icon={<FileText size={18} />} title="Transaction Details">
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <FormGroup label="Quantity" required style={{ maxWidth: 400 }}>
+              <div style={{ display: 'flex', alignItems: 'stretch' }}>
+                <button type="button" onClick={() => set('quantity', Math.max(1, Number(form.quantity) - 1))}
+                  style={{ width: 42, height: 44, boxSizing: 'border-box', margin: 0, border: '1px solid #cbe4f4', borderRadius: '10px 0 0 10px', background: '#eaf4fb', color: '#1a7ab5', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>−</button>
+                <input type="number" value={form.quantity} min={1}
+                  onChange={e => set('quantity', Math.max(1, parseInt(e.target.value) || 1))}
+                  style={{ width: 100, height: 44, boxSizing: 'border-box', margin: 0, padding: 0, borderTop: '1px solid #cbe4f4', borderBottom: '1px solid #cbe4f4', borderLeft: 'none', borderRight: 'none', textAlign: 'center', fontSize: 15, fontWeight: 600, background: '#f4f9fd', color: '#102a43', outline: 'none' }} />
+                <button type="button" onClick={() => set('quantity', Number(form.quantity) + 1)}
+                  style={{ width: 42, height: 44, boxSizing: 'border-box', margin: 0, border: '1px solid #cbe4f4', borderRadius: '0 10px 10px 0', background: '#eaf4fb', color: '#1a7ab5', fontSize: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: '0.2s' }}>+</button>
+              </div>
+            </FormGroup>
+            
+            <FormGroup 
+              required 
+              label={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                  Promo
+                  <div className="info-tooltip-container" style={{ position: 'relative', display: 'flex', alignItems: 'center', cursor: 'help' }}>
+                    <Info size={15} color="#94a3b8" style={{ marginTop: '1px' }} />
+                    <span className="tooltip-text">
+                      Promo is auto-applied when quantity is 10 or greater (Get 1 free container).
+                    </span>
+                  </div>
+                </span>
+              }
+            >
+              <div style={{ height: 44, boxSizing: 'border-box', display: 'flex', alignItems: 'center', padding: '0 16px', borderRadius: '10px', fontSize: 14, fontWeight: 600, background: isPromo ? '#dcfce7' : '#f4f9fd', border: `1px solid ${isPromo ? '#bbf7d0' : '#cbe4f4'}`, color: isPromo ? '#15803d' : '#6a9ab8', transition: '0.2s' }}>
                 {isPromo ? 'Promo Applied (Get 1 Free gallon)' : 'No Promo Applied'}
               </div>
-              
-              {/* Info Icon Button */}
-              <div className="info-tooltip-container">
-                <Info size={20} color="#2a7ab5" />
-                <span className="tooltip-text">
-                  Promo is auto-applied when quantity is 10 or greater (Get 1 free container).
-                </span>
+            </FormGroup>
+          </div>
+        </SectionCard>
+
+        {/* Section 4 */}
+        <SectionCard step="4" icon={<Tag size={18} />} title="Payment">
+          <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            
+            <FormGroup label="Total Amount" style={{ flex: 1 }}>
+              <div style={{ border: '1px solid #cbe4f4', borderRadius: '10px', padding: '0 16px', fontSize: 15, fontWeight: 700, color: '#102a43', background: '#f4f9fd', height: 44, boxSizing: 'border-box', display: 'flex', alignItems: 'center' }}>
+                ₱{total.toFixed(2)}
               </div>
-            </div>
-          </FormGroup>
-        </div>
-      </SectionCard>
+            </FormGroup>
+            
+            <FormGroup label="Status" required>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <label style={{ borderColor: form.status === 'paid' ? '#bbf7d0' : '#cbe4f4', backgroundColor: form.status === 'paid' ? '#dcfce7' : '#ffffff', color: form.status === 'paid' ? '#15803d' : '#6a9ab8', borderWidth: '1px', borderStyle: 'solid', padding: '0 16px', height: 44, boxSizing: 'border-box', borderRadius: '10px', display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 600, fontSize: 14, transition: '0.2s' }}>
+                  <input type="radio" checked={form.status === 'paid'} onChange={() => set('status', 'paid')} style={{ display: 'none' }} />
+                  <CheckCircle size={18} style={{ marginRight: 8 }} /> Paid
+                </label>
+                
+                <label style={{ borderColor: form.status === 'unpaid' ? '#fecaca' : '#cbe4f4', backgroundColor: form.status === 'unpaid' ? '#fee2e2' : '#ffffff', color: form.status === 'unpaid' ? '#b91c1c' : '#6a9ab8', borderWidth: '1px', borderStyle: 'solid', padding: '0 16px', height: 44, boxSizing: 'border-box', borderRadius: '10px', display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 600, fontSize: 14, transition: '0.2s' }}>
+                  <input type="radio" checked={form.status === 'unpaid'} onChange={() => set('status', 'unpaid')} style={{ display: 'none' }} />
+                  <Clock size={18} style={{ marginRight: 8 }} /> Unpaid
+                </label>
+              </div>
+            </FormGroup>
 
-      {/* Section 4 */}
-      <SectionCard step="4" icon={<Tag size={18} />} title="Payment">
-        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          <FormGroup label="Total Amount" style={{ maxWidth: 420 }}>
-            <div style={{ border: '1.5px solid #b8d6ea', borderRadius: 8, padding: '9px 13px', fontSize: 14, color: '#1a3a5a', background: '#f4f9fd', minWidth: 160 }}>
-              ₱{total.toFixed(2)}
-            </div>
-          </FormGroup>
-          <FormGroup label="Status" required>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              
-              {/* PAID OPTION */}
-              <label className="status-radio-label paid-label" style={{ 
-                borderColor: form.status === 'paid' ? '#2e7d32' : '#e0e0e0',
-                backgroundColor: form.status === 'paid' ? '#e6f4ea' : 'transparent',
-                color: form.status === 'paid' ? '#2e7d32' : '#555'
-              }}>
-                <input 
-                  type="radio" 
-                  className="status-radio-input"
-                  checked={form.status === 'paid'} 
-                  onChange={() => set('status', 'paid')} 
-                />
-                <CheckCircle size={16} style={{ marginRight: 8 }} />
-                Paid
-              </label>
+          </div>
+        </SectionCard>
 
-              {/* UNPAID OPTION */}
-              <label className="status-radio-label unpaid-label" style={{ 
-                borderColor: form.status === 'unpaid' ? '#d84315' : '#e0e0e0',
-                backgroundColor: form.status === 'unpaid' ? '#fff3f0' : 'transparent',
-                color: form.status === 'unpaid' ? '#d84315' : '#555'
-              }}>
-                <input 
-                  type="radio" 
-                  className="status-radio-input"
-                  checked={form.status === 'unpaid'} 
-                  onChange={() => set('status', 'unpaid')} 
-                />
-                <Clock size={16} style={{ marginRight: 8 }} />
-                Unpaid
-              </label>
-            </div>
-          </FormGroup>
-        </div>
-      </SectionCard>
-
+      </div>
       {/* Actions */}
-      <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>
+      <div style={{ display: 'flex', gap: 12, marginTop: 24 }}>
+        
         {onCancel && (
-          <button onClick={onCancel} style={{
-            flex: 1, padding: '16px', fontSize: 15, fontWeight: 500, cursor: 'pointer',
-            background: '#fff', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 100,
-          }}>Cancel</button>
+          <button 
+            onClick={onCancel} 
+            type="button" 
+            style={{
+              flex: 1, padding: '14px', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+              background: '#f4f9fd', color: '#1a3a5a', border: '1px solid #b8d6ea', borderRadius: '10px', 
+              transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+              boxShadow: '0 4px 6px rgba(16, 42, 67, 0.04)' 
+            }}
+            onMouseOver={(e) => {
+              e.currentTarget.style.background = '#eaf4fb'; 
+              e.currentTarget.style.boxShadow = '0 6px 12px rgba(16, 42, 67, 0.08)'; 
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = '#f4f9fd'; 
+              e.currentTarget.style.boxShadow = '0 4px 6px rgba(16, 42, 67, 0.04)';
+            }}
+          >
+            Cancel
+          </button>
         )}
-        <button onClick={() => onSubmit({ ...form, total })} disabled={loading} style={{
-          flex: 3, padding: '16px', fontSize: 16, fontWeight: 500, cursor: loading ? 'not-allowed' : 'pointer',
-          background: '#03537f', color: '#fff', border: 'none', borderRadius: 100,
-          opacity: loading ? 0.7 : 1,
-        }}>
+
+        <button 
+          onClick={() => onSubmit({ ...form, total })} 
+          type="button" 
+          disabled={loading} 
+          style={{
+            flex: 3, padding: '14px', fontSize: 14, fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+            background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: '10px',
+            opacity: loading ? 0.7 : 1, 
+            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
+            boxShadow: '0 6px 16px rgba(42, 122, 181, 0.15)' 
+          }}
+          onMouseOver={(e) => {
+            if (!loading) {
+              /* 📍 Clean, slightly deeper blue (no muddy gray), and NO bouncing! */
+              e.currentTarget.style.background = '#256b9e'; 
+              e.currentTarget.style.boxShadow = '0 8px 24px rgba(42, 122, 181, 0.25)'; 
+            }
+          }}
+          onMouseOut={(e) => {
+            if (!loading) {
+              e.currentTarget.style.background = '#2a7ab5'; 
+              e.currentTarget.style.boxShadow = '0 6px 16px rgba(42, 122, 181, 0.15)';
+            }
+          }}
+        >
           {loading ? 'Submitting…' : 'Submit Transaction'}
         </button>
+        
       </div>
     </div>
   );
 }
 
-// ─── Today's Transactions List ────────────────────────────────────────────────
+// ─── Transaction Row Component ──────────────────────────────────────────────
 
-// Find this function in your code!
-{/* 📍 NEW 9-COLUMN TRANSACTION ROW */}
-{/* 📍 PERFECTLY ALIGNED TRANSACTION ROW (With Updated Yellow & Blue Theme) */}
-{/* 📍 PERFECTLY CENTERED TRANSACTION ROW */}
 const TransactionRow = ({ tx, onEdit, onDelete }) => {
-  
   const isReseller = tx.Cust_Type?.toLowerCase() === 'reseller';
   const isDelivery = tx.Serv_Name?.toLowerCase() === 'delivery';
 
@@ -385,7 +494,7 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
         )}
       </div>
 
-      {/* 3. ADDRESS (Added justifyContent: center) */}
+      {/* 3. ADDRESS */}
       <div style={{ flex: 1.5, minWidth: 140, fontSize: 13, color: '#486581', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
         {(tx.Purok || tx.Barangay_Name) ? (
           <>
@@ -397,7 +506,7 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
         ) : <span style={{ color: '#cbd5e1' }}>—</span>}
       </div>
 
-      {/* 4. CONTACT (Changed alignItems to center) */}
+      {/* 4. CONTACT */}
       <div style={{ flex: 1.2, minWidth: 120, display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center' }}>
         {tx.Contact_Nums ? (
           tx.Contact_Nums.split(',').map((num, index) => (
@@ -430,8 +539,8 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
       </div>
 
       {/* 6. QUANTITY */}
-      <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 13, color: '#486581' }}>
-        Qty: {tx.Quantity}
+      <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 14, fontWeight: 500, color: '#486581' }}>
+        {tx.Quantity}
       </div>
 
       {/* 7. AMOUNT */}
@@ -451,13 +560,13 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
         </span>
       </div>
 
-      {/* 9. ACTIONS (Added justifyContent: center) */}
+      {/* 9. ACTIONS */}
       <div style={{ flex: 0.7, minWidth: 80, display: 'flex', justifyContent: 'center', gap: 8 }}>
         <button onClick={() => onEdit(tx)} style={{ background: '#fff', border: '1px solid #b8d6ea', borderRadius: 6, cursor: 'pointer', padding: '6px 8px', display: 'flex', alignItems: 'center', color: '#1a5c8a', transition: '0.2s' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+          <Edit2 size={15} />
         </button>
         <button onClick={() => onDelete(tx.Trans_ID)} style={{ background: '#fff', border: '1px solid #ffcdd2', borderRadius: 6, cursor: 'pointer', padding: '6px 8px', display: 'flex', alignItems: 'center', color: '#d32f2f', transition: '0.2s' }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c0-1-2-2-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c0 1 2 1 2 2v2"></path></svg>
+          <Trash2 size={15} />
         </button>
       </div>
 
@@ -465,59 +574,31 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
   );
 };
 
-const styles = {
-  radioOption: {
-    padding: '10px 14px',
-    border: '1.5px solid #b8d6ea',
-    borderRadius: 10,
-    background: '#f4f9fd',
-    cursor: 'pointer',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 9,
-    fontSize: 16,
-    color: '#1a3a5a',
-    transition: 'all 0.15s',
-  },
-  formSection: {
-    background: '#fff',
-    borderRadius: 14,
-    padding: '30px 24px',
-    marginBottom: 16,
-    border: '0.5px solid #b8d6ea',
-  },
-  input: {
-    border: '1.5px solid #b8d6ea',
-    borderRadius: 8,
-    padding: '13px 13px',
-    fontSize: 16,
-    color: '#1a3a5a',
-    background: '#f4f9fd',
-    outline: 'none',
-    width: '95%',
-  }
-};
 
-// ─── Main Dashboard ───────────────────────────────────────────────────────────
+// ─── Main Dashboard Component ──────────────────────────────────────────────────
 
 export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) {
-  const [view, setView] = useState('transactions'); // 'transactions' | 'new' | 'edit'
-  
-
-  // Remove default browser body/html margins so the app fills edge-to-edge
-  useEffect(() => {
-    const prev = document.body.style.cssText;
-    document.body.style.margin = '0';
-    document.body.style.padding = '0';
-    document.documentElement.style.margin = '0';
-    document.documentElement.style.padding = '0';
-    return () => { document.body.style.cssText = prev; };
-  }, []);
+  const [view, setView] = useState('transactions'); 
+  const [currentTime, setCurrentTime] = useState(new Date());
   const [transactions, setTransactions] = useState([]);
   const [loadingList, setLoadingList] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editTarget, setEditTarget] = useState(null);
   const [error, setError] = useState('');
+
+  // Combined useEffect for both the Clock and the Body Margins
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    const prev = document.body.style.cssText;
+    document.body.style.margin = '0';
+    document.body.style.padding = '0';
+    document.documentElement.style.margin = '0';
+    document.documentElement.style.padding = '0';
+    return () => { 
+      clearInterval(timer); 
+      document.body.style.cssText = prev; 
+    };
+  }, []);
 
   // ── Fetch today's transactions ──
   const fetchToday = async () => {
@@ -527,7 +608,6 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
       const res = await fetch(`${API_BASE}/transaction/today`);
       if (!res.ok) throw new Error('Failed to load transactions');
       const data = await res.json();
-      console.log("Raw Database Data:", data);
       setTransactions(data);
     } catch (err) {
       setError(err.message);
@@ -539,62 +619,54 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
   useEffect(() => { fetchToday(); }, []);
 
   // ── Submit new transaction ──
-const handleSubmit = async (formData) => {
-  const storedUserData = localStorage.getItem('activeEmployee');
-  
-  if (!storedUserData) {
-      alert("Error: No user logged in. Please return to the login screen.");
-      return; // Stop the function from running any further!
-  }
+  const handleSubmit = async (formData) => {
+    const storedUserData = localStorage.getItem('activeEmployee');
+    if (!storedUserData) {
+        alert("Error: No user logged in. Please return to the login screen.");
+        return; 
+    }
+    const activeEmployee = JSON.parse(storedUserData);
 
-  // Parse the saved data back into an object
-  const activeEmployee = JSON.parse(storedUserData);
-  // ==========================================
+    const generatedCustID = formData.custID || 'C' + Date.now().toString().slice(-6); 
+    const generatedTransID = parseInt(Date.now().toString().slice(-9));
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    const localTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 19).replace('T', ' ');
+    
+    const payload = {
+      Trans_ID: generatedTransID,
+      Trans_Date: localTime,
+      Remarks: formData.status.charAt(0).toUpperCase() + formData.status.slice(1), 
+      empID: activeEmployee.id,       
+      roleID: activeEmployee.role,    
+      customer: {
+        Cust_ID: generatedCustID, 
+        Barangay_ID: formData.barangayID || null, 
+        Barangay_Name: formData.barangay, 
+        Purok: formData.purok,
+        Cust_LName: formData.lastName,
+        Cust_FName: formData.firstName,
+        Cust_Type: formData.customerType,
+        Contact_Nums: formData.contactNums.filter(n => n.trim() !== '')
+      },
+      items: [{
+        Trans_Detail_ID: generatedTransID + 1,
+        Serv_ID: formData.serviceType === 'delivery' ? 2 : 1,
+        Quantity: Number(formData.quantity),
+        Selling_Price: Number(formData.total),
+        Promo: formData.quantity >= 10 ? 'Yes' : 'No'
+      }]
+    };
 
-  const generatedCustID = formData.custID || 'C' + Date.now().toString().slice(-6); 
-  const generatedTransID = parseInt(Date.now().toString().slice(-9));
-  const tzoffset = (new Date()).getTimezoneOffset() * 60000;
-  const localTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 19).replace('T', ' ');
-  
-  const payload = {
-    Trans_ID: generatedTransID,
-    Trans_Date: localTime,
-    Remarks: formData.status.charAt(0).toUpperCase() + formData.status.slice(1), 
-    
-    // ---> DYNAMIC VARIABLES INJECTED HERE <---
-    empID: activeEmployee.id,       // Replaces the hardcoded 'E001'
-    roleID: activeEmployee.role,    // Replaces the backend's hardcoded 'R'
-    
-    customer: {
-      Cust_ID: generatedCustID, 
-      Barangay_ID: formData.barangayID || null, 
-      Barangay_Name: formData.barangay, 
-      Purok: formData.purok,
-      Cust_LName: formData.lastName,
-      Cust_FName: formData.firstName,
-      Cust_Type: formData.customerType,
-      Contact_Nums: formData.contactNums.filter(n => n.trim() !== '')
-    },
-    
-    items: [{
-      Trans_Detail_ID: generatedTransID + 1,
-      Serv_ID: formData.serviceType === 'delivery' ? 2 : 1,
-      Quantity: Number(formData.quantity),
-      Selling_Price: Number(formData.total),
-      Promo: formData.quantity >= 10 ? 'Yes' : 'No'
-    }]
+    try {
+      await axios.post('http://localhost:5000/api/transaction', payload);
+      alert('Transaction successful!');
+      setView('transactions');
+      fetchToday(); 
+    } catch (error) {
+      console.error("Submission failed:", error);
+      alert('Transaction failed. Check console for details.');
+    }
   };
-
-  try {
-    await axios.post('http://localhost:5000/api/transaction', payload);
-    alert('Transaction successful!');
-    setView('transactions');
-    fetchToday(); // Refresh the list
-  } catch (error) {
-    console.error("Submission failed:", error);
-    alert('Transaction failed. Check console for details.');
-  }
-};
 
   // ── Update existing transaction ──
   const handleUpdate = async (form) => {
@@ -628,49 +700,62 @@ const handleSubmit = async (formData) => {
     }
   };
 
-  // ── Search customers by name (for auto-fill) ──
-  const [searchResults, setSearchResults] = useState([]);
-
-  const handleSearch = async (val) => {
-      set('lastName', val); // Trigger search on name change
-      if (val.length > 2) {
-          const res = await fetch(`${API_BASE}/customer/search?name=${val}`);
-          const data = await res.json();
-          setSearchResults(data);
-      }
-  };
-
   const startEdit = (tx) => {
     setEditTarget(tx);
     setView('edit');
   };
 
-  // ── Styles ──
-  const topbarStyle = {
-    background: '#1a2a3a', display: 'flex', alignItems: 'center',
-    justifyContent: 'space-between', padding: '0 24px', height: 56,
-    position: 'sticky', top: 0, zIndex: 100,
-  };
-
   return (
     <div style={{ background: '#dceef8', minHeight: '100vh', fontFamily: 'system-ui, sans-serif', width: '100%', boxSizing: 'border-box', margin: 0, padding: 0 }}>
+      
       {/* ── Top Bar ── */}
-      <div style={topbarStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, background: '#2a7ab5', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2C8 2 5 7 5 12s3 8 7 8 7-3 7-8-3-10-7-10z"/></svg>
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontSize: 20, fontWeight: 500, lineHeight: 1.2, }}>CeeStem</div>
-            <div style={{ color: '#4ab8e8', fontSize: 18, letterSpacing: 1, textTransform: 'uppercase' }}>Water Refilling</div>
+      <div style={{ 
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+        background: '#102a43', 
+        padding: '16px 28px', 
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img 
+            src={logoImg} 
+            alt="CeeStem Logo"
+            style={{ 
+              width: 56, height: 56, 
+              objectFit: 'contain', 
+              transform: 'scale(1.35)', 
+              transformOrigin: 'center' 
+            }} 
+          />
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, letterSpacing: '0.5px', lineHeight: 1.1 }}>
+              CeeStem
+            </div>
+            <div style={{ color: '#62b0e8', fontSize: 12, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
+              Water Refilling
+            </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => {}} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 20, padding: '7px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <User size={25} /> {refiller}
-          </button>
-          <button onClick={() => { setView('transactions'); fetchToday(); }} style={{ background: 'transparent', color: '#fff', border: '1.5px solid #fff', borderRadius: 20, padding: '7px 16px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <History size={25} /> View Transaction History
+
+        <div style={{ display: 'flex', gap: 16 }}>
+          <div style={{ 
+            background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', borderRadius: '30px', 
+            padding: '8px 16px', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
+            border: '1px solid rgba(255, 255, 255, 0.12)'
+          }}>
+            <User size={18} color="#90cdf4" /> 
+            {refiller}
+          </div>
+          <button 
+            onClick={() => { setView('transactions'); fetchToday(); }} 
+            style={{ 
+              background: 'transparent', color: '#ffffff', border: '1px solid #62b0e8', borderRadius: '30px', 
+              padding: '8px 20px', fontSize: 14, fontWeight: 500, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8,
+              transition: 'background 0.2s'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(98, 176, 232, 0.15)'}
+            onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+          >
+            <History size={18} color="#62b0e8" /> View Transaction History
           </button>
         </div>
       </div>
@@ -679,85 +764,115 @@ const handleSubmit = async (formData) => {
       <div style={{ padding: 24 }}>
 
         {/* Page Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ 
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
+          marginBottom: 24, background: '#ffffff', padding: '20px 28px', 
+          borderRadius: '16px', boxShadow: '0 4px 16px rgba(16, 42, 67, 0.04)', border: '1px solid #eaf4fb' 
+        }}>
           {view === 'transactions' ? (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1a5c8a', fontSize: 22, fontWeight: 500 }}>
-              <History size={24} color="#1a7ab5" />
-              Today's Transactions
+            <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ background: '#eaf4fb', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbe4f4', boxShadow: '0 2px 8px rgba(26, 92, 138, 0.05)' }}>
+                  <FileText size={24} color="#1a7ab5" />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <div style={{ color: '#102a43', fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px' }}>Today's Transactions</div>
+                  <div style={{ color: '#627d98', fontSize: 13, fontWeight: 500 }}>Monitor your daily sales and deliveries</div>
+                </div>
+              </div>
+              <div style={{ background: '#f4f9fd', padding: '8px 16px', borderRadius: '30px', color: '#1a5c8a', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 10, letterSpacing: 0.3 }}>
+                <div style={{ width: 8, height: 8, background: '#10b981', borderRadius: '50%', boxShadow: '0 0 6px rgba(16, 185, 129, 0.4)' }}></div>
+                <Clock size={16} color="#6a9ab8" />
+                {currentTime ? currentTime.toLocaleString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true }) : 'Loading...'}
+              </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#1a5c8a', fontSize: 22, fontWeight: 500 }}>
-              <Plus size={24} color="#1a7ab5" />
-              {view === 'edit' ? 'Edit Transaction' : 'New Transaction'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ background: '#eaf4fb', width: 48, height: 48, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #cbe4f4', boxShadow: '0 2px 8px rgba(26, 92, 138, 0.05)' }}>
+                <Plus size={24} color="#1a7ab5" />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div style={{ color: '#102a43', fontSize: 22, fontWeight: 700, letterSpacing: '-0.3px' }}>
+                  {view === 'edit' ? 'Edit Transaction' : 'New Transaction'}
+                </div>
+                <div style={{ color: '#627d98', fontSize: 13, fontWeight: 500 }}>
+                  {view === 'edit' ? 'Update customer and service details' : 'Record a new water refill or delivery'}
+                </div>
+              </div>
             </div>
           )}
-          <div style={{ display: 'flex', gap: 10 }}>
+
+          <div style={{ display: 'flex', gap: 12 }}>
             {view === 'transactions' && (
-              <button onClick={() => { console.log("Button clicked, setting view to 'new'"); setView('new'); }} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 13, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Plus size={15} /> New Transaction
+              <button onClick={() => setView('new')} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 10px rgba(42, 122, 181, 0.2)', transition: 'all 0.2s' }}>
+                <Plus size={18} strokeWidth={2.5} /> New Transaction
               </button>
             )}
             {view !== 'transactions' && (
-              <button onClick={() => { setView('transactions'); setEditTarget(null); }} style={{ background: '#f4f9fd', color: '#1a3a5a', border: '1.5px solid #b8d6ea', borderRadius: 8, padding: '9px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <ChevronLeft size={15} /> Back
+              <button onClick={() => { setView('transactions'); setEditTarget(null); }} style={{ background: '#f4f9fd', color: '#1a3a5a', border: '1px solid #b8d6ea', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+                <ChevronLeft size={18} strokeWidth={2.5} /> Back
               </button>
             )}
-            <button onClick={onSignOut} style={{ background: '#2a7ab5', color: '#fff', border: 'none', borderRadius: 8, padding: '9px 18px', fontSize: 15, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <LogOut size={15} /> Sign Out
+            <button onClick={onSignOut} style={{ background: '#fff0f0', color: '#d32f2f', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
+              <LogOut size={18} strokeWidth={2.5} /> Sign Out
             </button>
           </div>
         </div>
 
         {/* ── Views ── */}
-        {view === 'new' && (
+        
+        {/* 📍 NEW & EDIT FORM WRAPPER */}
+        {(view === 'new' || (view === 'edit' && editTarget)) && (
           <div style={{ 
-            maxWidth: '1500px', // Restrict width so it doesn't stretch too wide
-            margin: '20px auto', // Center it
-            padding: '30px',
-            background: '#ffffff',
-            borderRadius: '12px',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.05)' // Subtle shadow makes it "pop"
+            background: '#ffffff', 
+            borderRadius: '16px', 
+            border: '1px solid #eaf4fb', 
+            boxShadow: '0 4px 16px rgba(16, 42, 67, 0.04)', 
+            padding: '32px',
+            boxSizing: 'border-box'
           }}>
-            <TransactionForm
-              onSubmit={handleSubmit}
-              onCancel={() => setView('transactions')}
-              loading={formLoading}
-            />
+            {view === 'new' ? (
+              <TransactionForm onSubmit={handleSubmit} onCancel={() => setView('transactions')} loading={formLoading} />
+            ) : (
+              <TransactionForm
+                initial={{
+                  lastName: editTarget.LastName || '',
+                  firstName: editTarget.FirstName || '',
+                  barangay: editTarget.Barangay || '',
+                  purok: editTarget.Purok || '',
+                  customerType: editTarget.CustomerType || 'personal',
+                  serviceType: editTarget.ServiceType || 'walkin',
+                  quantity: editTarget.Quantity || 1,
+                  promo: editTarget.Promo || 'no',
+                  status: editTarget.Status || 'paid',
+                }}
+                onSubmit={handleUpdate}
+                onCancel={() => { setView('transactions'); setEditTarget(null); }}
+                loading={formLoading}
+              />
+            )}
           </div>
         )}
 
-        {view === 'edit' && editTarget && (
-          <TransactionForm
-            initial={{
-              lastName: editTarget.LastName || '',
-              firstName: editTarget.FirstName || '',
-              barangay: editTarget.Barangay || '',
-              purok: editTarget.Purok || '',
-              customerType: editTarget.CustomerType || 'personal',
-              serviceType: editTarget.ServiceType || 'walkin',
-              quantity: editTarget.Quantity || 1,
-              promo: editTarget.Promo || 'no',
-              status: editTarget.Status || 'paid',
-            }}
-            onSubmit={handleUpdate}
-            onCancel={() => { setView('transactions'); setEditTarget(null); }}
-            loading={formLoading}
-          />
-        )}
-
+        {/* 📍 TRANSACTIONS TABLE WRAPPER */}
         {view === 'transactions' && (
-          <div style={{ background: '#fff', borderRadius: 14, border: '0.5px solid #b8d6ea', overflow: 'hidden' }}>
-            {/* 📍 NEW 9-COLUMN TABLE HEADER */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 16px', background: '#eaf4fb', borderBottom: '1.5px solid #d0e8f5' }}>
-              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Customer</div>
-              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Type</div>
-              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Address</div>
-              <div style={{ flex: 1.2, minWidth: 120, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Contact</div>
-              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Service</div>
-              <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Qty</div>
-              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</div>
-              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Status</div>
-              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 500, color: '#1a5c8a', textTransform: 'uppercase', letterSpacing: 0.5 }}>Actions</div>
+          <div style={{ 
+            background: '#ffffff', 
+            borderRadius: '16px', 
+            border: '1px solid #eaf4fb', 
+            boxShadow: '0 4px 16px rgba(16, 42, 67, 0.04)', 
+            overflow: 'hidden' 
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 16px', background: '#f4f7fa', borderBottom: '1px solid #e2e8f0' }}>
+              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Customer</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Type</div>
+              <div style={{ flex: 1.5, minWidth: 140, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Address</div>
+              <div style={{ flex: 1.2, minWidth: 120, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Contact</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Service</div>
+              <div style={{ flex: 0.5, minWidth: 60, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Qty</div>
+              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Amount</div>
+              <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Status</div>
+              <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>Actions</div>
             </div>
 
             {loadingList && (
@@ -774,9 +889,8 @@ const handleSubmit = async (formData) => {
             ))}
           </div>
         )}
-      </div>
+
+      </div> 
     </div>
   );
-
-  
 }

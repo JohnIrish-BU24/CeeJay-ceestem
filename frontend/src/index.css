@@ -110,34 +110,56 @@ code {
   background: var(--code-bg);
 }
 
-/* Add to the bottom of index.css */
 .info-tooltip-container {
   position: relative;
-  display: inline-flex;
+  display: flex;
+  align-items: center;
   cursor: help;
 }
 
 .info-tooltip-container .tooltip-text {
   visibility: hidden;
-  position: absolute;
-  bottom: 125%;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: #1a2a3a;
-  color: #fff;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 12px;
-  width: 180px;
-  z-index: 10;
-  text-align: center;
   opacity: 0;
-  transition: opacity 0.2s;
+  position: absolute;
+  bottom: 150%; /* Pushes it exactly above the icon */
+  left: 50%;
+  
+  /* Smooth float-up animation start state */
+  transform: translateX(-50%) translateY(8px); 
+  
+  /* The Box Design */
+  background-color: #102a43; /* Matches your dark navy header! */
+  color: #ffffff;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  width: 220px; /* Keeps the text neatly wrapped instead of one massive long line */
+  box-shadow: 0 8px 16px rgba(16, 42, 67, 0.15);
+  z-index: 1000; /* Ensures it stays on top of everything else */
+  
+  /* The smooth transition */
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none; 
+}
+
+.info-tooltip-container .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #102a43 transparent transparent transparent;
 }
 
 .info-tooltip-container:hover .tooltip-text {
   visibility: visible;
   opacity: 1;
+  transform: translateX(-50%) translateY(0); /* Floats up into its final position */
 }
 
 input::placeholder {
