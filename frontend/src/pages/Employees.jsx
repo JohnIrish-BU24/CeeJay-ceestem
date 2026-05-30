@@ -11,6 +11,7 @@ function Employee() {
   const [roleDataMap, setRoleDataMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState('All'); // NEW: Added roleFilter state
   
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
@@ -248,7 +249,6 @@ function Employee() {
     else alert('Incorrect Owner Password!');
   };
 
-  // NEW: Connected to Backend Endpoint
   const handleSaveNewPassword = async (e) => {
     e.preventDefault();
     if (newEmployeePassword.trim() === '') return alert('Password cannot be empty');
@@ -284,11 +284,15 @@ function Employee() {
     else alert(`${menuName} page not yet implemented`);
   };
 
-  const filteredEmployees = employees.filter(emp => 
-    emp.Emp_FName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    emp.Emp_LName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    emp.Emp_ID.toString().includes(searchQuery)
-  );
+  // UPDATED: Now filters by search query AND selected role
+  const filteredEmployees = employees.filter(emp => {
+    const matchesSearch = emp.Emp_FName.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          emp.Emp_LName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          emp.Emp_ID.toString().includes(searchQuery);
+    const matchesRole = roleFilter === 'All' || emp.Role_ID === roleFilter;
+    
+    return matchesSearch && matchesRole;
+  });
 
   return (
     <div style={styles.appContainer}>
@@ -338,6 +342,20 @@ function Employee() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={styles.searchFieldInput}
                 />
+              </div>
+
+              {/* NEW: Role Filter Dropdown mapped to Transaction.jsx design */}
+              <div style={styles.dropdownSelectContainer}>
+                <select 
+                  value={roleFilter} 
+                  onChange={(e) => setRoleFilter(e.target.value)} 
+                  style={styles.nativeCustomSelect}
+                >
+                  <option value="All">All Roles</option>
+                  <option value="R">Refiller (R)</option>
+                  <option value="D">Driver (D)</option>
+                </select>
+                <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
               </div>
             </div>
 
@@ -613,7 +631,6 @@ function Employee() {
                       </button>
                     </div>
 
-                    {/* NEW PASSWORD FIELD IN ADD MODAL */}
                     <div style={styles.modalFormInputGroupFieldUnit}>
                       <label style={styles.modalFormFieldLabelHeader}>SYSTEM PASSWORD <span style={{color: 'red'}}>*</span></label>
                       <input type="text" name="Password" value={formData.Password} onChange={handleInputChange} required style={{...styles.modalActiveInputField, WebkitTextSecurity: 'disc'}} placeholder="Assign Initial Password" />
@@ -772,6 +789,12 @@ const styles = {
   searchBarBoxFrame: { position: 'relative', display: 'flex', alignItems: 'center', flex: '0 1 400px', maxWidth: '560px' },
   searchLeftIcon: { position: 'absolute', left: '16px', pointerEvents: 'none' },
   searchFieldInput: { width: '100%', padding: '12px 16px 12px 46px', borderRadius: '8px', border: '1px solid #bde0fe', backgroundColor: '#eaf4fc', color: '#012a4a', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' },
+  
+  /* NEW STYLES COPIED FROM TRANSACTION.JSX FOR THE DROPDOWN */
+  dropdownSelectContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
+  nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
+  dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
+
   addPrimaryActionButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.2)' },
   batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffe3e3', border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
   batchSelectionCountLabel: { color: '#b91c1c', fontWeight: '700', fontSize: '0.95rem' },
