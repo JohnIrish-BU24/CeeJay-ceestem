@@ -291,7 +291,7 @@ function Reports() {
     if (!reportDataList || reportDataList.length === 0) return null;
     
     const firstRowItem = reportDataList[0] || {};
-    const headerKeysArray = Object.keys(firstRowItem);
+    const headerKeysArray = Object.keys(firstRowItem);const headerKeysArray = Object.keys(firstRowItem).filter(key => key.toUpperCase() !== 'STATUS');
     
     return (
       <tr>
@@ -325,7 +325,7 @@ function Reports() {
       return (
         <tr key={index} style={styles.tableBodyDataRow}>
           {/* Note: the key is dynamically sent to the formatter to trigger the Peso symbol */}
-          {Object.entries(safeRowItem).map(([key, cellValue], colIndex) => (
+          {Object.entries(safeRowItem) .filter(([key]) => key.toUpperCase() !== 'STATUS') .map(([key, cellValue], colIndex) => (
             <td key={colIndex} style={styles.tableBodyCellBlock}>
               {formatCellValue(cellValue, key)}
             </td>
