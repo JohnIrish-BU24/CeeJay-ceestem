@@ -216,6 +216,7 @@ function Reports() {
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
+    else if (menuName === 'Employees') navigate('/employees');
     else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
@@ -262,10 +263,10 @@ function Reports() {
         return val; 
     }
 
-    // UPDATED: Dynamic Currency Formatter
+    // UPDATED: Dynamic Currency Formatter to include Unpaid_Amount
     if (key) {
         const upKey = key.toUpperCase();
-        if (['GROSS_REVENUE', 'CASH_COLLECTED', 'PRICE', 'TOTAL_SALES', 'OUTSTANDING_CREDIT'].includes(upKey)) {
+        if (['GROSS_REVENUE', 'CASH_COLLECTED', 'PRICE', 'TOTAL_SALES', 'OUTSTANDING_CREDIT', 'UNPAID_AMOUNT'].includes(upKey)) {
             return `₱${Number(val).toFixed(2)}`;
         }
     }

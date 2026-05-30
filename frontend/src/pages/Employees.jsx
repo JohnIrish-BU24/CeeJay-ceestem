@@ -1,3 +1,4 @@
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Trash2, Edit2, Plus, X, Eye, User, Phone, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -281,6 +282,7 @@ function Employee() {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Employees') navigate('/employees');
+    else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -300,7 +302,8 @@ function Employee() {
       {/* NAVIGATION BAR */}
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <div style={styles.brandIconContainer}>💧</div>
+          <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
+          
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -773,6 +776,7 @@ function Employee() {
 }
 
 const styles = {
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
