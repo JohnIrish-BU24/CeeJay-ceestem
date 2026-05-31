@@ -1,3 +1,4 @@
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
@@ -134,6 +135,7 @@ function Customer({ onLogout }) {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Employees') navigate('/employees');
+    else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -141,7 +143,9 @@ function Customer({ onLogout }) {
     <div style={styles.appContainer}>
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <div style={styles.brandIconContainer}>💧</div>
+          {/* Replace the emoji div with this img tag */}
+          <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
+          
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -207,7 +211,7 @@ function Customer({ onLogout }) {
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
-                    <input type="checkbox" onChange={handleToggleAllSelection} checked={selectedCustomerIdentifiers.length === customerDataList.length && customerDataList.length > 0} style={styles.tableBodyCheckboxInput} />
+                    <input type="checkbox" onChange={handleToggleAllSelection} checked={selectedCustomerIdentifiers.length === customerDataList.length && customerDataList.length > 0} className="custom-checkbox" />
                   </th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>FIRST NAME</th>
@@ -222,7 +226,7 @@ function Customer({ onLogout }) {
                 {customerDataList.map((cust) => (
                   <tr key={cust.Cust_ID} style={styles.tableBodyDataRow}>
                     <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
-                      <input type="checkbox" checked={selectedCustomerIdentifiers.includes(cust.Cust_ID)} onChange={() => handleToggleSingleSelection(cust.Cust_ID)} style={styles.tableBodyCheckboxInput} />
+                      <input type="checkbox" checked={selectedCustomerIdentifiers.includes(cust.Cust_ID)} onChange={() => handleToggleSingleSelection(cust.Cust_ID)} className="custom-checkbox" />
                     </td>
                     <td style={styles.tableBodyCellBlock}><strong>{cust.Cust_ID}</strong></td>
                     <td style={styles.tableBodyCellBlock}>{cust.Cust_FName}</td>
@@ -392,6 +396,7 @@ function Customer({ onLogout }) {
 }
 
 const styles = {
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },

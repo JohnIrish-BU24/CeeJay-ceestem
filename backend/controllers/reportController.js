@@ -44,17 +44,29 @@ exports.getTransactionStatusReport = async (req, res) => {
 
 // 3. Service Sales Report (Service_detail, Trans_detail)
 exports.getServiceSalesReport = async (req, res) => {
+    const { date, startDate, endDate } = req.query;
     try {
-        const queryText = `
+        let queryText = `
             SELECT sd.Serv_Name, sd.Price, 
                    SUM(td.Quantity) AS Amount_Sold,
                    SUM(td.Quantity * td.Selling_Price) AS Total_Sales
             FROM SERVICE_DETAIL sd
             JOIN TRANS_DETAIL td ON sd.Serv_ID = td.Serv_ID
-            GROUP BY sd.Serv_ID, sd.Serv_Name, sd.Price
-            ORDER BY Total_Sales DESC
+            JOIN TRANS_RECORD tr ON td.Trans_ID = tr.Trans_ID
         `;
-        const [rows] = await db.query(queryText);
+        
+        let filterParams = [];
+        if (startDate && endDate) {
+            queryText += ` WHERE DATE(tr.Trans_Date) BETWEEN ? AND ? `;
+            filterParams.push(startDate, endDate);
+        } else if (date) {
+            queryText += ` WHERE DATE(tr.Trans_Date) = ? `;
+            filterParams.push(date);
+        }
+        
+        queryText += ` GROUP BY sd.Serv_ID, sd.Serv_Name, sd.Price ORDER BY Total_Sales DESC `;
+        
+        const [rows] = await db.query(queryText, filterParams);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to generate Service Sales Report", details: error.message });
@@ -142,25 +154,32 @@ exports.getEmployeeInformationReport = async (req, res) => {
 
 // 8. Employee Performance Summary (Employee, Job_role, Work_detail, Trans_detail, Service_detail)
 exports.getEmployeePerformanceSummary = async (req, res) => {
+    const { date, startDate, endDate } = req.query;
     try {
-        const queryText = `
+        let queryText = `
             SELECT e.Emp_LName, e.Emp_FName, jr.Role_ID, 
                    COUNT(DISTINCT wd.Trans_ID) AS Jobs_Completed,
-                   SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) AS Total_Gallons,
-                   jr.Quota AS Target,
-                   CASE 
-                     WHEN SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) >= jr.Quota THEN 'GOAL REACHED' 
-                     ELSE 'IN PROGRESS' 
-                   END AS Status
+                   SUM(td.Quantity) AS Total_Gallons,
+                   jr.Quota AS Target
             FROM EMPLOYEE e
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
             JOIN WORK_DETAIL wd ON e.Emp_ID = wd.Emp_ID
             JOIN TRANS_DETAIL td ON wd.Trans_ID = td.Trans_ID
-            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
-            GROUP BY e.Emp_ID, e.Emp_LName, e.Emp_FName, jr.Role_ID, jr.Quota
-            ORDER BY Jobs_Completed DESC
+            JOIN TRANS_RECORD tr ON wd.Trans_ID = tr.Trans_ID
         `;
-        const [rows] = await db.query(queryText);
+        
+        let filterParams = [];
+        if (startDate && endDate) {
+            queryText += ` WHERE DATE(tr.Trans_Date) BETWEEN ? AND ? `;
+            filterParams.push(startDate, endDate);
+        } else if (date) {
+            queryText += ` WHERE DATE(tr.Trans_Date) = ? `;
+            filterParams.push(date);
+        }
+        
+        queryText += ` GROUP BY e.Emp_ID, e.Emp_LName, e.Emp_FName, jr.Role_ID, jr.Quota ORDER BY Jobs_Completed DESC `;
+        
+        const [rows] = await db.query(queryText, filterParams);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to generate Employee Performance Summary", details: error.message });
@@ -170,52 +189,63 @@ exports.getEmployeePerformanceSummary = async (req, res) => {
 // 9. Payroll & Incentive Breakdown (Employee, Payroll_record, Job_role)
 exports.getPayrollIncentiveBreakdown = async (req, res) => {
     try {
-        const queryText = `
-            SELECT e.Emp_LName, e.Emp_FName, jr.Salary, pr.Pay_Period, pr.Total_Incentive, pr.Net_Pay
+        const payrollQueryText = `
+            SELECT e.Emp_LName, e.Emp_FName, jr.Salary, 
+                   CONCAT(pr.Start_Date, ' to ', pr.End_Date) AS Pay_Period, 
+                   pr.Total_Incentive, pr.Net_Pay
             FROM EMPLOYEE e
             JOIN PAYROLL_RECORD pr ON e.Emp_ID = pr.Emp_ID
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
-            ORDER BY pr.Pay_Period DESC, e.Emp_LName ASC
+            ORDER BY pr.Start_Date DESC, e.Emp_LName ASC
         `;
-        const [rows] = await db.query(queryText);
-        res.json(rows);
-    } catch (error) {
-        res.status(500).json({ error: "Failed to generate Payroll & Incentive Breakdown", details: error.message });
+        const [payrollRecordsArray] = await db.query(payrollQueryText);
+        res.json(payrollRecordsArray);
+    } catch (databaseQueryError) {
+        res.status(500).json({ error: "Failed to generate Payroll & Incentive Breakdown", details: databaseQueryError.message });
     }
 };
 
 // 10. Daily Revenue Summary Report
 exports.getDailyRevenueSummaryReport = async (req, res) => {
-    const reportDate = req.query.date || '2026-04-14';
+    const { date, startDate, endDate } = req.query;
+    
     try {
-        const queryText = `
+        let revenueSummarySqlStatement = `
             SELECT 
-                DATE(tr.Trans_Date) AS Report_Date,
+                DATE(tr.Trans_Date) AS Date,
                 COUNT(DISTINCT tr.Trans_ID) AS Total_Customers_Served,
-                SUM(CASE WHEN sd.Serv_Name LIKE '%Refill%' THEN td.Quantity ELSE 0 END) AS Total_Gallons_Sold,
+                SUM(td.Quantity) AS Total_Gallons_Sold,
                 SUM(td.Quantity * td.Selling_Price) AS Gross_Revenue,
                 SUM(CASE WHEN tr.Remarks = 'Paid' THEN (td.Quantity * td.Selling_Price) ELSE 0 END) AS Cash_Collected,
                 SUM(CASE WHEN tr.Remarks = 'Unpaid' THEN (td.Quantity * td.Selling_Price) ELSE 0 END) AS Outstanding_Credit
             FROM TRANS_RECORD tr
             JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
             JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
-            WHERE DATE(tr.Trans_Date) = ?
-            GROUP BY DATE(tr.Trans_Date)
         `;
-        const [rows] = await db.query(queryText, [reportDate]);
-        if (rows.length > 0) {
-            res.json(rows[0]);
+
+        let dateRangeFilters = [];
+
+        // Dynamically shift between a single day or a 7-day span
+        if (startDate && endDate) {
+            revenueSummarySqlStatement += ` WHERE DATE(tr.Trans_Date) BETWEEN ? AND ? `;
+            dateRangeFilters.push(startDate, endDate);
         } else {
-            res.json({
-                Report_Date: reportDate,
-                Total_Customers_Served: 0,
-                Total_Gallons_Sold: 0,
-                Gross_Revenue: 0,
-                Cash_Collected: 0,
-                Outstanding_Credit: 0
-            });
+            const targetReportDate = date || '2026-04-14';
+            revenueSummarySqlStatement += ` WHERE DATE(tr.Trans_Date) = ? `;
+            dateRangeFilters.push(targetReportDate);
         }
-    } catch (error) {
-        res.status(500).json({ error: "Failed to generate Daily Revenue Summary Report", details: error.message });
+
+        // Group by the dates to separate the days for the Line Chart
+        revenueSummarySqlStatement += ` GROUP BY DATE(tr.Trans_Date) ORDER BY DATE(tr.Trans_Date) ASC`;
+
+        const [retrievedRevenueData] = await db.query(revenueSummarySqlStatement, dateRangeFilters);
+
+        if (retrievedRevenueData.length > 0) {
+            res.json(retrievedRevenueData); // Return the full array for the chart
+        } else {
+            res.json([]);
+        }
+    } catch (databaseQueryError) {
+        res.status(500).json({ error: "Failed to generate Daily Revenue Summary Report", details: databaseQueryError.message });
     }
 };
