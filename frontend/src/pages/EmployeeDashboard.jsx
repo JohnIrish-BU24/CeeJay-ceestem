@@ -134,6 +134,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const [searchTerm, setSearchTerm] = useState("");       
   const [isSearching, setIsSearching] = useState(false);  
   const [lockedContactCount, setLockedContactCount] = useState(0);
+  const [isFocused, setIsFocused] = useState(false);
   
 
   // ─── 2. YOUR EXISTING FORM STATE (Untouched) ────────────────────────────
@@ -336,91 +337,90 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
           {/* 📍 SMART LAST NAME SEARCH FIELD (CONNECTED TO DB) */}
           {/* Last Name */}
           <FormGroup label="Last Name" required>
-            <div style={{ position: 'relative' }}>
-              <input 
-                className="custom-input" 
-                style={{ 
-                  ...inputStyle, 
-                  background: isLocked ? '#f8fafc' : inputStyle.background, 
-                  color: isLocked ? '#94a3b8' : inputStyle.color 
-                }} 
-                placeholder="e.g. Dela Cruz" 
-                value={form.lastName} 
-                readOnly={isLocked}
-                onChange={e => {
-                  const val = e.target.value;
-                  
-                  // 1. Only allow valid name characters (Regex from previous step)
-                  if (isNameValid(val)) {
-                    // 2. Set the form state
-                    set('lastName', toTitleCase(val));
-                    
-                    // 3. Set search term immediately if not locked
-                    if (!isLocked) {
-                      setSearchTerm(val);
-                    }
-                  }
-                }} 
-              />
+  <div style={{ position: 'relative' }}>
+    <input 
+      className="custom-input" 
+      style={{ 
+        ...inputStyle, 
+        background: isLocked ? '#f8fafc' : (inputStyle.background || '#ffffff'), 
+        color: isLocked ? '#94a3b8' : (inputStyle.color || '#102a43'),
+        width: '100%',
+        boxSizing: 'border-box'
+      }} 
+      placeholder="e.g. Dela Cruz" 
+      value={form.lastName} 
+      readOnly={isLocked}
+      // 📍 Focus logic to show/hide dropdown
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+      onChange={e => {
+        const val = e.target.value;
+        if (isNameValid(val)) {
+          set('lastName', toTitleCase(val));
+          if (!isLocked) {
+            setSearchTerm(val);
+          }
+        }
+      }} 
+    />
+    
+    {/* 📍 DROPDOWN: Shows only when focused, has items, and is not locked */}
+    {suggestions.length > 0 && !isLocked && isFocused && (
+      <div style={{ 
+        position: 'absolute', 
+        top: '100%', 
+        left: 0, 
+        width: '100%', 
+        background: '#ffffff', 
+        border: '1px solid #cbe4f4', 
+        borderRadius: '0 0 10px 10px', 
+        marginTop: '0px', 
+        zIndex: 9999, 
+        boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
+        
+        // 📍 Scrollbar functionality
+        maxHeight: '180px',      
+        overflowY: 'auto'        
+      }}>
+        {suggestions.map((c, i) => (
+          <div 
+            key={i} 
+            // 📍 AUTO-FILL LOGIC PRESERVED HERE
+            onClick={() => {
+              set('custID', c.Cust_ID);
+              set('barangayID', c.Barangay_ID);
+              set('lastName', c.Cust_LName);
+              set('firstName', c.Cust_FName);
+              set('barangay', c.Barangay_Name);
+              set('purok', c.Purok);
+              set('customerType', c.Cust_Type);
               
-              {/* 📍 DROPDOWN POSITIONED HERE */}
-              {suggestions.length > 0 && !isLocked && (
-                <div style={{ 
-                  position: 'absolute', 
-                  top: '100%', 
-                  left: 0, 
-                  width: '150%', // 📍 Change this from 100% to 300% (or fixed pixels like 400px)
-                  background: '#fff', 
-                  border: '1px solid #cbe4f4', 
-                  borderRadius: '10px', 
-                  marginTop: '6px', 
-                  zIndex: 9999, 
-                  boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
-                  overflow: 'hidden' 
-                }}>
-                  {suggestions.map((c, i) => (
-                    <div key={i} onClick={() => {
-                      set('custID', c.Cust_ID);
-                      set('barangayID', c.Barangay_ID);
-                      set('lastName', c.Cust_LName);
-                      set('firstName', c.Cust_FName);
-                      set('barangay', c.Barangay_Name);
-                      set('purok', c.Purok);
-                      set('customerType', c.Cust_Type);
-                      
-                      const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
-                      set('contactNums', dbContacts);
-                      setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
-                      
-                      setSearchTerm(""); 
-                      setSuggestions([]);
-                      setIsLocked(true);
-                    }} 
-                    style={{ 
-                      padding: '10px 16px', 
-                      cursor: 'pointer', 
-                      fontSize: 13, 
-                      color: '#102a43',
-                      borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb',
-                      display: 'flex',          // 📍 Keeps content in one line
-                      alignItems: 'center',     // 📍 Vertically aligns everything
-                      gap: '6px'                // 📍 Small space between Name and Barangay
-                    }}
-                    onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
-                    onMouseOut={e => e.currentTarget.style.background = '#fff'}
-                    >
-                      <strong style={{ color: '#1a7ab5', whiteSpace: 'nowrap' }}>
-                        ({c.Cust_LName}, {c.Cust_FName})
-                      </strong>
-                      <span style={{ color: '#627d98', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        , {c.Barangay_Name}, Purok {c.Purok}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </FormGroup>
+              const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
+              set('contactNums', dbContacts);
+              setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
+              
+              setSearchTerm(""); 
+              setSuggestions([]);
+              setIsLocked(true);
+            }}
+            style={{ 
+              padding: '12px 16px', 
+              cursor: 'pointer', 
+              fontSize: 13, 
+              borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb',
+              color: '#102a43',
+              background: '#ffffff'
+            }}
+            onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
+            onMouseOut={e => e.currentTarget.style.background = '#ffffff'}
+          >
+            <strong>({c.Cust_LName}, {c.Cust_FName})</strong>, {c.Barangay_Name}, Purok {c.Purok}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</FormGroup>
 
           {/* First Name */}
           <FormGroup label="First Name" required>
