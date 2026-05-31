@@ -128,13 +128,18 @@ function FormGroup({ label, required, children, style }) {
 function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   
   // ─── 1. NEW STATES GO RIGHT AT THE TOP ──────────────────────────────────
-  const [customerMode, setCustomerMode] = useState(null); // 'new' | 'existing' | null
-  const [suggestions, setSuggestions] = useState([]);     
-  const [isLocked, setIsLocked] = useState(false);        
-  const [searchTerm, setSearchTerm] = useState("");       
-  const [isSearching, setIsSearching] = useState(false);  
+  const [customerMode, setCustomerMode] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
   const [lockedContactCount, setLockedContactCount] = useState(0);
-  const [isFocused, setIsFocused] = useState(false);
+
+  // 📍 INDEPENDENT STATES
+  const [lastSearchTerm, setLastSearchTerm] = useState("");
+  const [lastSuggestions, setLastSuggestions] = useState([]);
+  const [isLastFocused, setIsLastFocused] = useState(false);
+
+  const [firstSearchTerm, setFirstSearchTerm] = useState("");
+  const [firstSuggestions, setFirstSuggestions] = useState([]);
+  const [isFirstFocused, setIsFirstFocused] = useState(false);
   
 
   // ─── 2. YOUR EXISTING FORM STATE (Untouched) ────────────────────────────
@@ -182,40 +187,41 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const isNumber = (str) => /^\d*$/.test(str);
 
 
-  // ─── 4. THE NEW DATABASE SEARCH LOGIC GOES HERE ─────────────────────────
+  // ─── 4. INDEPENDENT DATABASE SEARCH LOGIC ─────────────────────────
+  
+  // Last Name Search Effect
   useEffect(() => {
-    // If not in existing mode, or search is empty, stop
-    if (customerMode !== 'existing' || !searchTerm || searchTerm.length === 0) {
-      setSuggestions([]);
-      return;
+    if (customerMode !== 'existing' || !lastSearchTerm || lastSearchTerm.trim().length === 0) {
+      setLastSuggestions([]); return;
     }
-
-    setIsSearching(true); 
-
-    const delayDebounceFn = setTimeout(async () => {
-      try {
-        console.log("Searching for:", searchTerm); // 📍 DEBUG: Check console to see if this fires
-        const res = await fetch(`${API_BASE}/customer/search?name=${encodeURIComponent(searchTerm)}`);
-        
-        if (res.ok) {
-          const data = await res.json();
-          setSuggestions(Array.isArray(data) ? data : []); 
-        } else {
-          setSuggestions([]);
-        }
-      } catch (err) {
-        console.error("Failed to fetch customers:", err);
-        setSuggestions([]);
-      } finally {
-        setIsSearching(false); 
+    const timer = setTimeout(async () => {
+      // 📍 Directly querying the backend for Last Name
+      const res = await fetch(`${API_BASE}/customer/search?lname=${encodeURIComponent(lastSearchTerm)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setLastSuggestions(data); 
       }
-    }, 500); 
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [lastSearchTerm, customerMode]);
 
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm, customerMode]); // searchTerm is the trigger!
+  // First Name Search Effect
+  useEffect(() => {
+    if (customerMode !== 'existing' || !firstSearchTerm || firstSearchTerm.trim().length === 0) {
+      setFirstSuggestions([]); return;
+    }
+    const timer = setTimeout(async () => {
+      // 📍 Directly querying the backend for First Name
+      const res = await fetch(`${API_BASE}/customer/search?fname=${encodeURIComponent(firstSearchTerm)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setFirstSuggestions(data); 
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [firstSearchTerm, customerMode]);
 
   // ─── 5. THE POP-UP CHOICE MODAL ───────────────────────────────────────────────
-  // ─── 5. THE PREMIUM WORK-FLOW MODAL ───────────────────────────────────────────
   if (!customerMode) {
     return (
       <div style={{
@@ -335,8 +341,9 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       }>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '16px' }}>
           {/* 📍 SMART LAST NAME SEARCH FIELD (CONNECTED TO DB) */}
-          {/* Last Name */}
-          <FormGroup label="Last Name" required>
+          {/* LAST NAME */}
+          {/* LAST NAME */}
+<FormGroup label="Last Name" required>
   <div style={{ position: 'relative' }}>
     <input 
       className="custom-input" 
@@ -350,71 +357,55 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       placeholder="e.g. Dela Cruz" 
       value={form.lastName} 
       readOnly={isLocked}
-      // 📍 Focus logic to show/hide dropdown
-      onFocus={() => setIsFocused(true)}
-      onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+      onFocus={() => setIsLastFocused(true)}
+      onBlur={() => setTimeout(() => setIsLastFocused(false), 200)}
       onChange={e => {
         const val = e.target.value;
         if (isNameValid(val)) {
           set('lastName', toTitleCase(val));
-          if (!isLocked) {
-            setSearchTerm(val);
-          }
+          if (!isLocked) setLastSearchTerm(val);
         }
       }} 
     />
     
-    {/* 📍 DROPDOWN: Shows only when focused, has items, and is not locked */}
-    {suggestions.length > 0 && !isLocked && isFocused && (
+    {/* 📍 Added safeguard: form.lastName must have text */}
+    {lastSuggestions.length > 0 && form.lastName.trim().length > 0 && !isLocked && isLastFocused && (
       <div style={{ 
-        position: 'absolute', 
-        top: '100%', 
-        left: 0, 
-        width: '100%', 
-        background: '#ffffff', 
-        border: '1px solid #cbe4f4', 
-        borderRadius: '0 0 10px 10px', 
-        marginTop: '0px', 
-        zIndex: 9999, 
-        boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
-        
-        // 📍 Scrollbar functionality
-        maxHeight: '180px',      
-        overflowY: 'auto'        
+        position: 'absolute', top: '100%', left: 0, width: '100%', 
+        background: '#ffffff', border: '1px solid #cbe4f4', borderRadius: '0 0 10px 10px', 
+        zIndex: 9999, boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
+        maxHeight: '180px', overflowY: 'auto' 
       }}>
-        {suggestions.map((c, i) => (
-          <div 
-            key={i} 
-            // 📍 AUTO-FILL LOGIC PRESERVED HERE
-            onClick={() => {
-              set('custID', c.Cust_ID);
-              set('barangayID', c.Barangay_ID);
-              set('lastName', c.Cust_LName);
-              set('firstName', c.Cust_FName);
-              set('barangay', c.Barangay_Name);
-              set('purok', c.Purok);
-              set('customerType', c.Cust_Type);
-              
-              const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
-              set('contactNums', dbContacts);
-              setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
-              
-              setSearchTerm(""); 
-              setSuggestions([]);
-              setIsLocked(true);
-            }}
-            style={{ 
-              padding: '12px 16px', 
-              cursor: 'pointer', 
-              fontSize: 13, 
-              borderBottom: i === suggestions.length - 1 ? 'none' : '1px solid #eaf4fb',
-              color: '#102a43',
-              background: '#ffffff'
-            }}
-            onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
-            onMouseOut={e => e.currentTarget.style.background = '#ffffff'}
-          >
-            <strong>({c.Cust_LName}, {c.Cust_FName})</strong>, {c.Barangay_Name}, Purok {c.Purok}
+        {lastSuggestions.map((c, i) => (
+          <div key={i} onClick={() => {
+            set('custID', c.Cust_ID); 
+            set('barangayID', c.Barangay_ID);
+            set('lastName', c.Cust_LName); 
+            set('firstName', c.Cust_FName);
+            set('barangay', c.Barangay_Name); 
+            set('purok', c.Purok);
+            set('customerType', c.Cust_Type);
+            const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
+            set('contactNums', dbContacts);
+            setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
+            
+            setLastSearchTerm(""); 
+            setLastSuggestions([]); 
+            setIsLocked(true);
+          }}
+          style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13, borderBottom: i === lastSuggestions.length - 1 ? 'none' : '1px solid #eaf4fb', background: '#ffffff', lineHeight: '1.6' }}
+          onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
+          onMouseOut={e => e.currentTarget.style.background = '#ffffff'}>
+            
+            {/* 📍 Kept your exact format, but added color to differentiate the actively searched name */}
+            <strong>(</strong>
+            <span style={{ color: '#64748b', fontWeight: 'normal' }}>Last Name: </span>
+            <span style={{ color: '#1a7ab5', fontWeight: 'bold' }}>{c.Cust_LName}</span>
+            <span style={{ color: '#64748b', fontWeight: 'normal' }}>, First Name: </span>
+            <span style={{ color: '#102a43', fontWeight: '600' }}>{c.Cust_FName}</span>
+            <strong>)</strong>
+            <span style={{ color: '#475569' }}>, {c.Barangay_Name}, Purok {c.Purok}</span>
+            
           </div>
         ))}
       </div>
@@ -422,24 +413,76 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   </div>
 </FormGroup>
 
-          {/* First Name */}
-          <FormGroup label="First Name" required>
-            <input 
-              className="custom-input" 
-              style={{ 
-                ...inputStyle, 
-                background: isLocked ? '#f8fafc' : inputStyle.background, 
-                color: isLocked ? '#94a3b8' : inputStyle.color 
-              }} 
-              placeholder="e.g. Juan" 
-              value={form.firstName} 
-              readOnly={isLocked}
-              onChange={e => {
-                const val = e.target.value;
-                if (isNameValid(val)) set('firstName', toTitleCase(val));
-              }} 
-            />
-          </FormGroup>
+{/* FIRST NAME */}
+<FormGroup label="First Name" required>
+  <div style={{ position: 'relative' }}>
+    <input 
+      className="custom-input" 
+      style={{ 
+        ...inputStyle, 
+        background: isLocked ? '#f8fafc' : (inputStyle.background || '#ffffff'), 
+        color: isLocked ? '#94a3b8' : (inputStyle.color || '#102a43'),
+        width: '100%',
+        boxSizing: 'border-box'
+      }} 
+      placeholder="e.g. Juan" 
+      value={form.firstName} 
+      readOnly={isLocked}
+      onFocus={() => setIsFirstFocused(true)}
+      onBlur={() => setTimeout(() => setIsFirstFocused(false), 200)}
+      onChange={e => {
+        const val = e.target.value;
+        if (isNameValid(val)) {
+          set('firstName', toTitleCase(val));
+          if (!isLocked) setFirstSearchTerm(val);
+        }
+      }} 
+    />
+    
+    {/* 📍 Added safeguard: form.firstName must have text */}
+    {firstSuggestions.length > 0 && form.firstName.trim().length > 0 && !isLocked && isFirstFocused && (
+      <div style={{ 
+        position: 'absolute', top: '100%', left: 0, width: '100%', 
+        background: '#ffffff', border: '1px solid #cbe4f4', borderRadius: '0 0 10px 10px', 
+        zIndex: 9999, boxShadow: '0 8px 24px rgba(16, 42, 67, 0.12)', 
+        maxHeight: '180px', overflowY: 'auto' 
+      }}>
+        {firstSuggestions.map((c, i) => (
+          <div key={i} onClick={() => {
+            set('custID', c.Cust_ID); 
+            set('barangayID', c.Barangay_ID);
+            set('lastName', c.Cust_LName); 
+            set('firstName', c.Cust_FName);
+            set('barangay', c.Barangay_Name); 
+            set('purok', c.Purok);
+            set('customerType', c.Cust_Type);
+            const dbContacts = c.Contact_Nums ? c.Contact_Nums.split(',') : [''];
+            set('contactNums', dbContacts);
+            setLockedContactCount(dbContacts[0] !== '' ? dbContacts.length : 0);
+            
+            setFirstSearchTerm(""); 
+            setFirstSuggestions([]); 
+            setIsLocked(true);
+          }}
+          style={{ padding: '12px 16px', cursor: 'pointer', fontSize: 13, borderBottom: i === firstSuggestions.length - 1 ? 'none' : '1px solid #eaf4fb', background: '#ffffff', lineHeight: '1.6' }}
+          onMouseOver={e => e.currentTarget.style.background = '#f4f9fd'}
+          onMouseOut={e => e.currentTarget.style.background = '#ffffff'}>
+            
+            {/* 📍 Kept your exact format, but highlighted First Name in blue */}
+            <strong>(</strong>
+            <span style={{ color: '#64748b', fontWeight: 'normal' }}>First Name: </span>
+            <span style={{ color: '#1a7ab5', fontWeight: 'bold' }}>{c.Cust_FName}</span>
+            <span style={{ color: '#64748b', fontWeight: 'normal' }}>, Last Name: </span>
+            <span style={{ color: '#102a43', fontWeight: '600' }}>{c.Cust_LName}</span>
+            <strong>)</strong>
+            <span style={{ color: '#475569' }}>, {c.Barangay_Name}, Purok {c.Purok}</span>
+            
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</FormGroup>
 
           {/* Barangay */}
           <FormGroup label="Barangay" required>

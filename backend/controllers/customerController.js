@@ -97,10 +97,12 @@ exports.deleteCustomer = async (req, res) => {
         res.status(500).json({ error: "Failed to complete deletion process", details: error.message });
     }
 };
+// backend/controllers/customerController.js
+
 exports.searchCustomer = async (req, res) => {
-    const { name } = req.query;
+    const { lname, fname } = req.query;
     try {
-        const queryText = `
+        let queryText = `
             SELECT 
                 c.Cust_ID, 
                 c.Barangay_ID, 
@@ -113,11 +115,22 @@ exports.searchCustomer = async (req, res) => {
             FROM CUSTOMER c
             JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
             LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
-            WHERE c.Cust_LName LIKE ?
-            GROUP BY c.Cust_ID, b.Barangay_Name, b.Purok
         `;
         
-        const [rows] = await db.query(queryText, [`${name}%`]);
+        const params = [];
+
+        // 📍 Search strictly by the column requested by the frontend
+        if (lname) {
+            queryText += ` WHERE c.Cust_LName LIKE ?`;
+            params.push(`${lname}%`);
+        } else if (fname) {
+            queryText += ` WHERE c.Cust_FName LIKE ?`;
+            params.push(`${fname}%`);
+        }
+
+        queryText += ` GROUP BY c.Cust_ID, b.Barangay_Name, b.Purok`;
+
+        const [rows] = await db.query(queryText, params);
         res.json(rows);
 
     } catch (err) { 
