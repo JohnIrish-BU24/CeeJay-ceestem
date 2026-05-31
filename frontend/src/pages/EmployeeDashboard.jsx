@@ -933,6 +933,11 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
     setView('edit');
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('token'); // Clear your auth token
+    window.location.href = '/login';   // Redirect to login page
+  };
+
   return (
     <div style={{ background: '#dceef8', minHeight: '100vh', fontFamily: 'system-ui, sans-serif', width: '100%', boxSizing: 'border-box', margin: 0, padding: 0 }}>
       
@@ -1041,8 +1046,23 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
                 <ChevronLeft size={18} strokeWidth={2.5} /> Back
               </button>
             )}
-            <button onClick={onSignOut} style={{ background: '#fff0f0', color: '#d32f2f', border: 'none', borderRadius: 10, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, transition: 'all 0.2s' }}>
-              <LogOut size={18} strokeWidth={2.5} /> Sign Out
+            <button 
+              onClick={handleLogout} 
+              style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                padding: '8px 16px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#fff5f5', 
+                color: '#e53e3e', 
+                cursor: 'pointer',
+                fontWeight: '600'
+              }}
+            >
+              <LogOut size={16} /> {/* Ensure you have this icon imported */}
+              Sign Out
             </button>
           </div>
         </div>
