@@ -213,21 +213,84 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     return () => clearTimeout(delayDebounceFn);
   }, [searchTerm, customerMode]); // searchTerm is the trigger!
 
-  // ─── 5. THE POP-UP CHOICE MODAL GOES HERE ───────────────────────────────
+  // ─── 5. THE POP-UP CHOICE MODAL ───────────────────────────────────────────────
+  // ─── 5. THE PREMIUM WORK-FLOW MODAL ───────────────────────────────────────────
   if (!customerMode) {
     return (
-      <div style={{ background: '#fff', borderRadius: '16px', padding: '40px', border: '1px solid #cbe4f4', boxShadow: '0 6px 16px rgba(16, 42, 67, 0.03)', textAlign: 'center', maxWidth: 450, margin: '0 auto' }}>
-        <h2 style={{ color: '#102a43', marginBottom: '8px', fontSize: 22 }}>Select Transaction Type</h2>
-        <p style={{ color: '#6a9ab8', marginBottom: '24px', fontSize: 14 }}>Is this for a new customer or an existing one?</p>
-        <div style={{ display: 'flex', gap: 16 }}>
-          <button onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: '1px solid #1a7ab5', background: '#eaf4fb', color: '#1a7ab5', fontWeight: 600, cursor: 'pointer', transition: '0.2s' }}>
-            New Customer
-          </button>
-          <button onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '14px', borderRadius: '10px', border: 'none', background: '#2a7ab5', color: '#fff', fontWeight: 600, cursor: 'pointer', transition: '0.2s', boxShadow: '0 4px 12px rgba(42, 122, 181, 0.2)' }}>
-            Existing Customer
+      <div style={{
+        position: 'fixed',
+        top: 0, left: 0, width: '100vw', height: '100vh',
+        background: 'rgba(10, 25, 41, 0.5)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 2000
+      }}>
+        
+        <div style={{
+          background: '#ffffff',
+          padding: '40px',
+          borderRadius: '24px',
+          boxShadow: '0 20px 40px rgba(16, 42, 67, 0.2)',
+          textAlign: 'center',
+          width: '380px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <h2 style={{ color: '#0f172a', marginBottom: '8px', fontSize: '20px', fontWeight: 700 }}>
+            Start a transaction
+          </h2>
+          <p style={{ color: '#64748b', marginBottom: '32px', fontSize: '14px' }}>
+            Choose how you would like to proceed.
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {/* New Entry */}
+            <button onClick={() => setCustomerMode('new')} 
+              style={{ 
+                padding: '16px 20px', borderRadius: '16px',
+                border: '1px solid #e2e8f0', background: '#ffffff',
+                display: 'flex', alignItems: 'center', gap: '16px',
+                cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'left'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#1a7ab5'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              <div style={{ background: '#e0f2fe', padding: '10px', borderRadius: '12px' }}>
+                <Plus size={20} color="#1a7ab5" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>New Customer</div>
+                <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '2px' }}>Register a customer manually</div>
+              </div>
+            </button>
+
+            {/* Search Entry */}
+            <button onClick={() => setCustomerMode('existing')} 
+              style={{ 
+                padding: '16px 20px', borderRadius: '16px',
+                border: '1px solid #e2e8f0', background: '#ffffff',
+                display: 'flex', alignItems: 'center', gap: '16px',
+                cursor: 'pointer', transition: 'all 0.2s ease', textAlign: 'left'
+              }}
+              onMouseOver={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#1a7ab5'; }}
+              onMouseOut={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+            >
+              <div style={{ background: '#e0f2fe', padding: '10px', borderRadius: '12px' }}>
+                <User size={20} color="#1a7ab5" />
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px' }}>Existing Customer</div>
+                <div style={{ color: '#94a3b8', fontSize: '12px', marginTop: '2px' }}>Look up a customer record</div>
+              </div>
+            </button>
+          </div>
+
+          <button onClick={onCancel} 
+            style={{ marginTop: '28px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
+            Go back
           </button>
         </div>
-        <button onClick={onCancel} style={{ marginTop: 24, background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14, fontWeight: 500 }}>Cancel</button>
       </div>
     );
   }
@@ -281,7 +344,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
                   background: isLocked ? '#f8fafc' : inputStyle.background, 
                   color: isLocked ? '#94a3b8' : inputStyle.color 
                 }} 
-                placeholder="Search or type..." 
+                placeholder="e.g. Dela Cruz" 
                 value={form.lastName} 
                 readOnly={isLocked}
                 onChange={e => {
