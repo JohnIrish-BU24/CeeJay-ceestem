@@ -898,19 +898,22 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
     }
     const activeEmployee = JSON.parse(storedUserData);
 
-    const generatedCustID = formData.custID || 'C' + Date.now().toString().slice(-6); 
+    // 1. Generate Transaction Details
     const generatedTransID = parseInt(Date.now().toString().slice(-9));
     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
     const localTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 19).replace('T', ' ');
     
+    // 2. Build the Payload
     const payload = {
       Trans_ID: generatedTransID,
       Trans_Date: localTime,
       Remarks: formData.status.charAt(0).toUpperCase() + formData.status.slice(1), 
       empID: activeEmployee.id,       
       roleID: activeEmployee.role,    
+      
+      // 📍 CUSTOMER DETAILS (If existing, formData.custID is passed here. If new, it generates one)
       customer: {
-        Cust_ID: generatedCustID, 
+        Cust_ID: formData.custID || 'C' + Date.now().toString().slice(-6), 
         Barangay_ID: formData.barangayID || null, 
         Barangay_Name: formData.barangay, 
         Purok: formData.purok,
@@ -919,9 +922,14 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
         Cust_Type: formData.customerType,
         Contact_Nums: formData.contactNums.filter(n => n.trim() !== '')
       },
+      
+      // 📍 ITEM DETAILS
       items: [{
         Trans_Detail_ID: generatedTransID + 1,
-        Serv_ID: formData.serviceType === 'delivery' ? 2 : 1,
+        
+        // 📍 THE FIX: Swap the 2 and 1 here so it matches your specific database!
+        Serv_ID: formData.serviceType === 'delivery' ? 1 : 2, 
+        
         Quantity: Number(formData.quantity),
         Selling_Price: Number(formData.total),
         Promo: formData.quantity >= 10 ? 'Yes' : 'No'
@@ -929,7 +937,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
     };
 
     try {
-      await axios.post('http://localhost:5000/api/transaction', payload);
+      await axios.post(`${API_BASE}/transaction`, payload);
       alert('Transaction successful!');
       setView('transactions');
       fetchToday(); 
@@ -1127,15 +1135,17 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
             ) : (
               <TransactionForm
                 initial={{
-                  lastName: editTarget.LastName || '',
-                  firstName: editTarget.FirstName || '',
-                  barangay: editTarget.Barangay || '',
+                  custID: editTarget.Cust_ID || '',
+                  lastName: editTarget.Cust_LName || '',
+                  firstName: editTarget.Cust_FName || '',
+                  barangay: editTarget.Barangay_Name || '',
                   purok: editTarget.Purok || '',
-                  customerType: editTarget.CustomerType || 'personal',
-                  serviceType: editTarget.ServiceType || 'walkin',
+                  customerType: editTarget.Cust_Type || 'Personal',
+                  contactNums: editTarget.Contact_Nums ? editTarget.Contact_Nums.split(', ') : [''],
+                  serviceType: editTarget.Serv_Name?.toLowerCase() === 'delivery' ? 'delivery' : 'walkin',
                   quantity: editTarget.Quantity || 1,
-                  promo: editTarget.Promo || 'no',
-                  status: editTarget.Status || 'paid',
+                  promo: editTarget.Quantity >= 10 ? 'yes' : 'no',
+                  status: editTarget.Remarks?.toLowerCase() === 'paid' ? 'paid' : 'unpaid',
                 }}
                 onSubmit={handleUpdate}
                 onCancel={() => { setView('transactions'); setEditTarget(null); }}

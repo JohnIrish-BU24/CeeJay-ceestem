@@ -59,6 +59,7 @@ exports.getTransactionHistory = async (req, res) => {
 };
 
 // 2. Process a complete Transaction (Creates the master record and the itemized lines)
+// 2. Process a complete Transaction (Creates the master record and the itemized lines)
 exports.createTransaction = async (req, res) => {
     // ==========================================
     // ---> STEP 3a: ADD roleID TO THIS LIST <---
@@ -115,22 +116,50 @@ exports.createTransaction = async (req, res) => {
         }
 
         // ==========================================
-        // 3. INSERT INTO CUSTOMER
+        // 3 & 4. CHECK AND INSERT CUSTOMER (IF NEW)
         // ==========================================
-        await connection.query(
-            `INSERT INTO CUSTOMER (Cust_ID, Barangay_ID, Cust_LName, Cust_FName, Cust_Type) 
-             VALUES (?, ?, ?, ?, ?)`,
-            [customer.Cust_ID, finalBarangayID, customer.Cust_LName, customer.Cust_FName, customer.Cust_Type]
+        // 📍 THIS IS THE FIX: Check if the customer already exists in the database
+        // ==========================================
+        // 3 & 4. CHECK AND INSERT/UPDATE CUSTOMER
+        // ==========================================
+        const [existingCust] = await connection.query(
+            "SELECT Cust_ID FROM CUSTOMER WHERE Cust_ID = ?", 
+            [customer.Cust_ID]
         );
 
-        // ==========================================
-        // 4. INSERT INTO CUSTOMER_NUM
-        // ==========================================
-        for (let num of customer.Contact_Nums) {
+        if (existingCust.length === 0) {
+            // NEW CUSTOMER: Insert them
             await connection.query(
-                'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
-                [customer.Cust_ID, num]
+                `INSERT INTO CUSTOMER (Cust_ID, Barangay_ID, Cust_LName, Cust_FName, Cust_Type) 
+                 VALUES (?, ?, ?, ?, ?)`,
+                [customer.Cust_ID, finalBarangayID, customer.Cust_LName, customer.Cust_FName, customer.Cust_Type]
             );
+
+            for (let num of customer.Contact_Nums) {
+                await connection.query(
+                    'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
+                    [customer.Cust_ID, num]
+                );
+            }
+        } else {
+            // 📍 THE FIX: EXISTING CUSTOMER - Update their profile with the new form inputs!
+            console.log("DEBUG: Existing customer detected. Updating their profile.");
+            
+            await connection.query(
+                'UPDATE CUSTOMER SET Cust_Type = ? WHERE Cust_ID = ?',
+                [customer.Cust_Type, customer.Cust_ID]
+            );
+
+            if (customer.Contact_Nums && customer.Contact_Nums.length > 0) {
+                // Clear old numbers and save the newly entered ones
+                await connection.query('DELETE FROM CUSTOMER_NUM WHERE Cust_ID = ?', [customer.Cust_ID]);
+                for (let num of customer.Contact_Nums) {
+                    await connection.query(
+                        'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
+                        [customer.Cust_ID, num]
+                    );
+                }
+            }
         }
 
         // ==========================================
@@ -227,24 +256,60 @@ exports.deleteAllTransactions = async (req, res) => {
 };
 
 exports.updateTransaction = async (req, res) => {
-    const { id } = req.params;
-    const { service, qty, amount, status } = req.body; 
+    const { id } = req.params; // Trans_ID
+    const form = req.body;     // The entire form payload from frontend
     
     console.log("Updating Trans ID:", id);
-    console.log("Data:", { service, qty, amount, status });
 
+    const connection = await db.getConnection();
     try {
-        // ONLY update the Trans_RECORD table first to isolate the error
-        const result = await db.query(
+        await connection.beginTransaction();
+
+        // 1. Update TRANS_RECORD (Status/Remarks)
+        const newStatus = form.status.charAt(0).toUpperCase() + form.status.slice(1);
+        await connection.query(
             'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', 
-            [status, id]
+            [newStatus, id]
         );
         
-        console.log("Update successful");
-        res.json({ message: "Transaction updated" });
+        // 2. Update TRANS_DETAIL (Service Type, Quantity, Amount)
+        const servID = form.serviceType === 'delivery' ? 2 : 1; // 1=Walk-in, 2=Delivery
+        const promoVal = form.quantity >= 10 ? 'Yes' : 'No';
+        await connection.query(
+            'UPDATE TRANS_DETAIL SET Serv_ID = ?, Quantity = ?, Selling_Price = ?, Promo = ? WHERE Trans_ID = ?',
+            [servID, form.quantity, form.total, promoVal, id]
+        );
+
+        // 3. Update CUSTOMER (Customer Type)
+        if (form.custID) {
+            await connection.query(
+                'UPDATE CUSTOMER SET Cust_Type = ? WHERE Cust_ID = ?',
+                [form.customerType, form.custID]
+            );
+
+            // 4. Update CUSTOMER_NUM (Contact Numbers)
+            if (form.contactNums && form.contactNums.length > 0) {
+                // Clear old numbers and insert the new ones
+                await connection.query('DELETE FROM CUSTOMER_NUM WHERE Cust_ID = ?', [form.custID]);
+                for (let num of form.contactNums) {
+                    if (num.trim() !== '') {
+                        await connection.query(
+                            'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
+                            [form.custID, num.trim()]
+                        );
+                    }
+                }
+            }
+        }
+
+        await connection.commit();
+        res.json({ message: "Transaction and Customer successfully updated" });
     } catch (err) {
-        console.error("SQL ERROR:", err); // THIS will print the real reason in your backend terminal
+        await connection.rollback();
+        console.error("SQL ERROR:", err); 
         res.status(500).json({ error: err.message });
+    } finally {
+        connection.release();
     }
 };
 
@@ -253,9 +318,8 @@ exports.getTodayTransactions = async (req, res) => {
         const queryText = `
             SELECT 
                 tr.Trans_ID, tr.Trans_Date, tr.Remarks,
-                c.Cust_LName, c.Cust_FName, c.Cust_Type,
+                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type,
                 b.Purok, b.Barangay_Name,
-                -- Groups multiple phone numbers together separated by a comma
                 GROUP_CONCAT(DISTINCT cn.Contact_Num SEPARATOR ', ') AS Contact_Nums, 
                 sd.Serv_Name,
                 MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
@@ -272,7 +336,7 @@ exports.getTodayTransactions = async (req, res) => {
             WHERE DATE(tr.Trans_Date) = CURDATE()
             GROUP BY 
                 tr.Trans_ID, tr.Trans_Date, tr.Remarks, 
-                c.Cust_LName, c.Cust_FName, c.Cust_Type, 
+                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, 
                 b.Purok, b.Barangay_Name,
                 sd.Serv_Name, td.Quantity, td.Selling_Price
             ORDER BY tr.Trans_Date DESC
