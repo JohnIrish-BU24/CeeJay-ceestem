@@ -170,3 +170,38 @@ code {
   font-weight: 1500;   /* Thickness of the checkmark */
   position: absolute;
 }
+
+@media print {
+  /* 1. Nuke ALL scrollbars and height restrictions universally */
+  * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* 2. Explicitly target the React root and body to ensure they break out of screen mode */
+  html, body, #root {
+    position: static !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* 3. Table specific formatting (keeps rows from splitting) */
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  /* 4. Hide UI elements */
+  button, 
+  input[type="date"],
+  nav, 
+  header,
+  img /* Optional: Hides your logo/navbar images if they get in the way */ {
+    display: none !important;
+  }
+}

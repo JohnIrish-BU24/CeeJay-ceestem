@@ -242,8 +242,6 @@ function Reports() {
   const formatCellValue = (val, key) => {
     if (val === null || val === undefined || val === '') return '—';
 
-
-
     // UPDATED: Converts Role ID to full names AND applies badge colors
     if (key && key.toUpperCase() === 'ROLE_ID') {
         const badgeStyle = {
@@ -291,7 +289,7 @@ function Reports() {
     if (!reportDataList || reportDataList.length === 0) return null;
     
     const firstRowItem = reportDataList[0] || {};
-    const headerKeysArray = Object.keys(firstRowItem);const headerKeysArray = Object.keys(firstRowItem).filter(key => key.toUpperCase() !== 'STATUS');
+    const headerKeysArray = Object.keys(firstRowItem).filter(key => key.toUpperCase() !== 'STATUS');
     
     return (
       <tr>
@@ -301,7 +299,7 @@ function Reports() {
           </th>
         ))}
         {selectedReport === 'employee-performance' && (
-          <th style={{...styles.tableHeaderColumnCell, textAlign: 'center'}}>
+          <th style={{...styles.tableHeaderColumnCell, textAlign: 'center'}} className="no-print">
             ACTIONS
           </th>
         )}
@@ -324,14 +322,13 @@ function Reports() {
       const safeRowItem = rowItem || {};
       return (
         <tr key={index} style={styles.tableBodyDataRow}>
-          {/* Note: the key is dynamically sent to the formatter to trigger the Peso symbol */}
           {Object.entries(safeRowItem) .filter(([key]) => key.toUpperCase() !== 'STATUS') .map(([key, cellValue], colIndex) => (
             <td key={colIndex} style={styles.tableBodyCellBlock}>
               {formatCellValue(cellValue, key)}
             </td>
           ))}
           {selectedReport === 'employee-performance' && (
-            <td style={{...styles.tableBodyCellBlock, textAlign: 'center'}}>
+            <td style={{...styles.tableBodyCellBlock, textAlign: 'center'}} className="no-print">
                <button 
                   onClick={() => setSelectedEmployeeForChart(safeRowItem)}
                   style={styles.actionStatsButton}
@@ -370,7 +367,7 @@ function Reports() {
       });
 
       return (
-        <div style={{...styles.chartWrapperCard, minHeight: '260px', marginBottom: '24px' }}>
+        <div className="chart-wrapper-card" style={{...styles.chartWrapperCard, minHeight: '260px', marginBottom: '24px' }}>
           <h3 style={styles.chartTitle}>Revenue Trend</h3>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={lineChartDataPoints} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -392,7 +389,7 @@ function Reports() {
         Sales: Number((item && item.Total_Sales) || 0)
       }));
       return (
-        <div style={{...styles.chartWrapperCard, minHeight: '260px', marginBottom: '24px' }}>
+        <div className="chart-wrapper-card" style={{...styles.chartWrapperCard, minHeight: '260px', marginBottom: '24px' }}>
           <h3 style={styles.chartTitle}>Revenue by Service</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={chartDataPoints} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
@@ -421,7 +418,7 @@ function Reports() {
     }];
 
     return (
-      <div style={styles.modalOverlay}>
+      <div style={styles.modalOverlay} className="no-print">
         <div style={styles.modalContentCard}>
           <div style={styles.modalHeader}>
             <h3 style={styles.chartTitle}>{selectedEmployeeForChart['EMPLOYEE NAME']} - Stats</h3>
@@ -452,7 +449,7 @@ function Reports() {
   });
 
   return (
-    <div style={styles.appContainer}>
+    <div style={styles.appContainer} className="app-container">
       
       <nav style={styles.topNavbar} className="no-print">
         <div style={styles.navBrandBlock}>
@@ -484,13 +481,11 @@ function Reports() {
         </div>
       </nav>
 
-      <div style={styles.workspaceBodyWrapper}>
-        <div style={styles.dataLogTableCanvasCard}>
+      <div style={styles.workspaceBodyWrapper} className="workspace-body-wrapper">
+        <div style={styles.dataLogTableCanvasCard} className="data-log-table-canvas-card">
           
           <div style={styles.tableControlsGridRow} className="no-print">
-            
             <div style={styles.dropdownsGroup}>
-              
               <div style={styles.dropdownSelectContainer}>
                 <div style={styles.dropdownIconBox}><Briefcase size={16} /></div>
                 <select 
@@ -536,7 +531,6 @@ function Reports() {
                 <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
               </div>
 
-              {/* UPDATED: Date Filter Menu is now active for all 3 views */}
               {['daily-revenue', 'service-sales', 'employee-performance'].includes(selectedReport) && (
                 <>
                   <div style={styles.dropdownSelectContainer}>
@@ -595,7 +589,6 @@ function Reports() {
                     )}
                   </div>
                   
-                  {/* Graph toggles exclusively for Revenue and Service Reports */}
                   {['daily-revenue', 'service-sales'].includes(selectedReport) && (
                       <button 
                         onClick={() => setShowGraph(!showGraph)} 
@@ -628,14 +621,14 @@ function Reports() {
              </div>
           </div>
 
-         <div style={styles.scrollableTableContainer}>
+         <div style={styles.scrollableTableContainer} className="scrollable-table-container">
             {isReportLoading ? (
                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100px', color: '#64748b' }}>
                   Loading report data...
                </div>
             ) : (
                 <>
-                  <div style={{ height: '20px', flexShrink: 0 }}></div>
+                  <div style={{ height: '20px', flexShrink: 0 }} className="no-print"></div>
                   {renderCharts()}
                   <table style={styles.ledgerTableMarkup} className="print-table">
                     <thead>
@@ -656,17 +649,79 @@ function Reports() {
       <style>
         {`
           @media print {
-            @page { size: landscape; margin: 10mm; }
-            body, html { background-color: white !important; margin: 0; padding: 0; color: black !important; }
-            .no-print { display: none !important; }
-            .print-only { display: block !important; }
-            div[style*="appContainer"] { position: static !important; overflow: visible !important; height: auto !important; width: 100% !important; }
-            div[style*="workspaceBodyWrapper"] { padding: 0 !important; background-color: white !important; overflow: visible !important; }
-            div[style*="dataLogTableCanvasCard"] { border: none !important; box-shadow: none !important; height: auto !important; padding: 0 !important; overflow: visible !important; }
-            div[style*="scrollableTableContainer"] { overflow: visible !important; border: none !important; margin: 0 !important; }
-            table.print-table { border-collapse: collapse !important; width: 100% !important; border: 1px solid #cbd5e1 !important; }
-            table.print-table th, table.print-table td { border: 1px solid #cbd5e1 !important; padding: 8px 12px !important; white-space: normal !important; word-wrap: break-word !important; }
-            table.print-table th { background-color: #f1f5f9 !important; color: #0f172a !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { 
+              size: landscape; 
+              margin: 15mm 10mm 15mm 10mm; 
+            }
+            
+            /* Break completely out of flex/fixed layouts for multi-page streaming formatting */
+            html, body, #root, .app-container, .workspace-body-wrapper, .data-log-table-canvas-card, .scrollable-table-container {
+              position: static !important;
+              overflow: visible !important;
+              height: auto !important;
+              max-height: none !important;
+              width: 100% !important;
+              background-color: white !important;
+              box-shadow: none !important;
+              border: none !important;
+              padding: 0 !important;
+              margin: 0 !important;
+              display: block !important;
+            }
+            
+            .no-print { 
+              display: none !important; 
+            }
+            
+            .print-only { 
+              display: block !important; 
+            }
+
+            /* Contain charts safely to avoid overflow mapping onto the dataset */
+            .chart-wrapper-card {
+              display: block !important;
+              position: relative !important;
+              height: 260px !important;
+              max-height: 260px !important;
+              page-break-inside: avoid !important;
+              margin-bottom: 35px !important;
+              border: 1px solid #cbd5e1 !important;
+              border-radius: 12px !important;
+              padding: 16px 20px !important;
+            }
+            
+            /* Native browser multi-page configuration */
+            table.print-table { 
+              display: table !important;
+              border-collapse: collapse !important; 
+              width: 100% !important; 
+              border: 1px solid #cbd5e1 !important; 
+              margin-top: 15px !important;
+              page-break-inside: auto !important;
+            }
+            
+            table.print-table thead {
+              display: table-header-group !important;
+            }
+            
+            table.print-table tr { 
+              page-break-inside: avoid !important;
+              page-break-after: auto !important;
+            }
+            
+            table.print-table th, table.print-table td { 
+              border: 1px solid #cbd5e1 !important; 
+              padding: 10px 12px !important; 
+              white-space: normal !important; 
+              word-wrap: break-word !important; 
+            }
+            
+            table.print-table th { 
+              background-color: #f1f5f9 !important; 
+              color: #0f172a !important; 
+              -webkit-print-color-adjust: exact; 
+              print-color-adjust: exact; 
+            }
           }
           
           @media screen {
