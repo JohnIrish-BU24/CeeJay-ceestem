@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
 import Transaction from './pages/Transaction';
-import OwnerTransaction from './pages/OwnerTransaction'; // Added to fix missing import error
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
@@ -75,7 +74,7 @@ function App() {
           path="/transaction" 
           element={
             isAuthenticated ? (
-              userRole === 'owner' ? <OwnerTransaction /> : <Transaction />
+              userRole === 'owner' ? <Transaction /> : <Transaction />
             ) : <Navigate to="/" replace /> 
           } 
         />
