@@ -1264,53 +1264,67 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
       <div style={{ 
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', 
         background: '#102a43', 
-        padding: '10px 28px', // 📍 REDUCED: Was 16px. This trims the top and bottom fat.
+        padding: '10px 28px', // Trims the top and bottom fat
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
       }}>
+        
+        {/* LOGO AND BRANDING */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <img 
             src={logoImg} 
             alt="CeeStem Logo"
             style={{ 
-              width: 44, height: 44, // 📍 REDUCED: Was 56x56
+              width: 44, height: 44, 
               objectFit: 'contain', 
-              transform: 'scale(1.1)', // 📍 REDUCED: Was 1.35
+              transform: 'scale(1.1)', 
               transformOrigin: 'center' 
             }} 
           />
           <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <div style={{ color: '#ffffff', fontSize: 20, fontWeight: 700, letterSpacing: '0.5px', lineHeight: 1.1 }}>
-              {/* 📍 REDUCED: Font size was 22 */}
               CeeStem
             </div>
             <div style={{ color: '#62b0e8', fontSize: 11, fontWeight: 600, letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-              {/* 📍 REDUCED: Font size was 12 */}
               Water Refilling
             </div>
           </div>
         </div>
         
 
-        <div style={{ display: 'flex', gap: 16 }}>
+        {/* 📍 RIGHT SIDE: BADGE, SEARCH, AND TOGGLES */}
+        {/* 📍 ADDED: alignItems: 'center' to this parent wrapper so everything stays perfectly leveled */}
+        <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+          
+          {/* Dynamic Role Badge */}
           <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', 
-            border: '1px solid #334e68', borderRadius: '999px',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#f8fafc'
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '0 16px', 
+            height: '38px', boxSizing: 'border-box',
+            
+            /* 📍 UNIFIED COLORS: Matches the search bar exactly */
+            border: '1px solid rgba(255, 255, 255, 0.15)', 
+            backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+            
+            borderRadius: '999px', color: '#f8fafc'
           }}>
-            <RoleIcon size={18} color="#7cc4fa" /> 
-            <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px' }}>
+            <RoleIcon size={16} color="#7cc4fa" /> 
+            <span style={{ fontSize: '13.5px', fontWeight: 600, letterSpacing: '0.5px' }}>
               {roleLabel}
             </span>
           </div>
           
-          {/* 📍 DARK THEMED SEARCH BAR */}
+          {/* DARK THEMED SEARCH BAR */}
           {view === 'transactions' && (
             <div style={{ 
-              display: 'flex', alignItems: 'center', background: 'rgba(255, 255, 255, 0.1)', 
-              border: '1px solid rgba(255, 255, 255, 0.15)', borderRadius: '30px', 
-              padding: '0 16px', // 📍 REDUCED: Standard left/right padding
-              width: '280px',    // 📍 NEW: Keeps the bar wide
-              height: '38px', transition: '0.2s' 
+              display: 'flex', alignItems: 'center', padding: '0 16px', width: '280px',
+              
+              /* 📍 ADDED: boxSizing to prevent the borders from adding extra height */
+              height: '38px', boxSizing: 'border-box', 
+              
+              /* 📍 UNIFIED COLORS: Matches the badge exactly */
+              border: '1px solid rgba(255, 255, 255, 0.15)', 
+              backgroundColor: 'rgba(255, 255, 255, 0.08)', 
+              
+              borderRadius: '30px', transition: '0.2s' 
             }}>
               <Search size={16} color="#90cdf4" />
               <input
@@ -1321,17 +1335,13 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
                 style={{ 
                   border: 'none', background: 'transparent', outline: 'none', 
                   marginLeft: '8px', fontSize: '13px', 
-                  width: '100%', // 📍 NEW: Takes up the remaining space inside the wide bar
-                  color: '#ffffff' 
+                  width: '100%', color: '#ffffff' 
                 }}
               />
             </div>
           )}
 
-          
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-          
-          {/* 📍 THE NEW TOGGLE (Replaces the old History button) */}
+          {/* THE NEW TOGGLE (Replaces the old History button) */}
           {view === 'transactions' && (
             <div style={{ display: 'flex', background: 'rgba(0,0,0,0.2)', padding: '4px', borderRadius: '8px' }}>
               <button onClick={() => setLayout('table')} style={{ background: layout === 'table' ? '#62b0e8' : 'transparent', color: layout === 'table' ? '#fff' : '#94a3b8', border: 'none', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', transition: '0.2s' }}>
@@ -1342,7 +1352,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
               </button>
             </div>
           )}
-        </div>
+          
         </div>
       </div>
       
