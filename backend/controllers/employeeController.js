@@ -70,6 +70,40 @@ exports.createEmployee = async (req, res) => {
     }
 };
 
+exports.loginEmployee = async (req, res) => {
+    const { username, password } = req.body;
+    try {
+        // Query database for matching Emp_ID and Password
+        const [rows] = await db.query(
+            'SELECT Emp_ID, Role_ID FROM EMPLOYEE WHERE Emp_ID = ? AND Password = ?', 
+            [username, password]
+        );
+        if (rows.length > 0) {
+            res.json({ success: true, role: 'employee', employeeData: rows[0] });
+        } else {
+            res.status(401).json({ success: false, message: "Invalid ID or Password" });
+        }
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+// 📍 Fetch only employees who are Refillers (Role_ID = 'R')
+exports.getRefillers = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT Emp_ID, Emp_FName, Emp_LName 
+            FROM EMPLOYEE 
+            WHERE Role_ID = 'R' AND Status = 'Active'
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        console.error("Error fetching refillers:", error);
+        res.status(500).json({ error: "Failed to fetch refillers." });
+    }
+};
+
 exports.updateEmployee = async (req, res) => {
     const { id } = req.params;
     const { Role_ID, Emp_LName, Emp_FName, Contact_Num, License_Num, License_Exp } = req.body;

@@ -55,11 +55,11 @@ body {
 }
 
 #root {
-  width: 1126px;
+  width: 100%;          /* was 1126px */
   max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
+  margin: 0;            /* remove auto centering */
+  border-inline: none;  /* remove side borders */
+  /* keep the rest */
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -110,35 +110,300 @@ code {
   background: var(--code-bg);
 }
 
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  border-radius: 5px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 2px solid transparent;
+  transition: border-color 0.3s;
+  margin-bottom: 24px;
 
-.custom-checkbox {
-  appearance: none;          /* Removes the default browser styling */
-  -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  border: 2px solid #bde0fe; /* Your app's light blue border color */
-  border-radius: 4px;
-  background-color: #ffffff; /* White background when unchecked */
-  cursor: pointer;
+  &:hover {
+    border-color: var(--accent-border);
+  }
+  &:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+.hero {
   position: relative;
-  display: inline-block;
+
+  .base,
+  .framework,
+  .vite {
+    inset-inline: 0;
+    margin: 0 auto;
+  }
+
+  .base {
+    width: 170px;
+    position: relative;
+    z-index: 0;
+  }
+
+  .framework,
+  .vite {
+    position: absolute;
+  }
+
+  .framework {
+    z-index: 1;
+    top: 34px;
+    height: 28px;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(44deg) rotateY(39deg)
+      scale(1.4);
+  }
+
+  .vite {
+    z-index: 0;
+    top: 107px;
+    height: 26px;
+    width: auto;
+    transform: perspective(2000px) rotateZ(300deg) rotateX(40deg) rotateY(39deg)
+      scale(0.8);
+  }
 }
 
-/* What it looks like when checked */
-.custom-checkbox:checked {
-  background-color: #0077b6; /* Your app's dark blue brand color */
-  border-color: #0077b6;
+#center {
+  display: flex;
+  flex-direction: column;
+  gap: 25px;
+  place-content: center;
+  place-items: center;
+  flex-grow: 1;
+
+  @media (max-width: 1024px) {
+    padding: 32px 20px 24px;
+    gap: 18px;
+  }
 }
 
-/* The white checkmark icon inside */
-.custom-checkbox:checked::after {
-  content: '✔';
-  color: white;
-  font-size: 14px;
+#next-steps {
+  display: flex;
+  border-top: 1px solid var(--border);
+  text-align: left;
+
+  & > div {
+    flex: 1 1 0;
+    padding: 32px;
+    @media (max-width: 1024px) {
+      padding: 24px 20px;
+    }
+  }
+
+  .icon {
+    margin-bottom: 16px;
+    width: 22px;
+    height: 22px;
+  }
+
+  @media (max-width: 1024px) {
+    flex-direction: column;
+    text-align: center;
+  }
+}
+
+#docs {
+  border-right: 1px solid var(--border);
+
+  @media (max-width: 1024px) {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+#next-steps ul {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  gap: 8px;
+  margin: 32px 0 0;
+
+  .logo {
+    height: 18px;
+  }
+
+  a {
+    color: var(--text-h);
+    font-size: 16px;
+    border-radius: 6px;
+    background: var(--social-bg);
+    display: flex;
+    padding: 6px 12px;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: box-shadow 0.3s;
+
+    &:hover {
+      box-shadow: var(--shadow);
+    }
+    .button-icon {
+      height: 18px;
+      width: 18px;
+    }
+  }
+
+  @media (max-width: 1024px) {
+    margin-top: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    li {
+      flex: 1 1 calc(50% - 8px);
+    }
+
+    a {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+  }
+}
+
+#spacer {
+  height: 88px;
+  border-top: 1px solid var(--border);
+  @media (max-width: 1024px) {
+    height: 48px;
+  }
+}
+
+.ticks {
+  position: relative;
+  width: 100%;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: -4.5px;
+    border: 5px solid transparent;
+  }
+
+  &::before {
+    left: 0;
+    border-left-color: var(--border);
+  }
+  &::after {
+    right: 0;
+    border-right-color: var(--border);
+  }
+}
+
+/* 📍 Hide the default up/down arrows on number inputs (Chrome, Safari, Edge) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 📍 Hide the arrows in Firefox */
+input[type="number"] {
+  -moz-appearance: textfield; /* Keeps older Firefox happy */
+  appearance: textfield;      /* Keeps VS Code and modern browsers happy! */
+}
+
+/* ========================================= */
+/* Tooltips & Radios                         */
+/* ========================================= */
+
+.info-tooltip-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: help;
+}
+
+.info-tooltip-container .tooltip-text {
+  visibility: hidden;
+  opacity: 0;
   position: absolute;
-  top: -2px;
-  left: 2px;
+  bottom: 150%; /* Pushes it exactly above the icon */
+  left: 50%;
+  
+  /* Smooth float-up animation start state */
+  transform: translateX(-50%) translateY(8px); 
+  
+  /* The Box Design */
+  background-color: #102a43; /* Matches your dark navy header! */
+  color: #ffffff;
+  text-align: center;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  width: 220px; /* Keeps the text neatly wrapped instead of one massive long line */
+  box-shadow: 0 8px 16px rgba(16, 42, 67, 0.15);
+  z-index: 1000; /* Ensures it stays on top of everything else */
+  
+  /* The smooth transition */
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none; 
 }
+
+.info-tooltip-container .tooltip-text::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -6px;
+  border-width: 6px;
+  border-style: solid;
+  border-color: #102a43 transparent transparent transparent;
+}
+
+.info-tooltip-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); /* Floats up into its final position */
+}
+
+input::placeholder {
+  color: #c9d5e4 !important; /* A soft, light gray */
+  opacity: 1;              /* Ensures the color renders correctly across browsers */
+}
+
+.status-radio-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px; /* Reduced from 10px 20px for a more compact look */
+  border: 1.5px solid #e0e0e0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;  /* Smaller font makes the button feel less "heavy" */
+  font-weight: 500;
+  min-width: 100px; /* Limits how small they can be, but keeps them tidy */
+  transition: all 0.2s ease;
+}
+
+/* "Paid" Active State */
+.status-radio-input:checked + .paid-label {
+  background-color: #e6f4ea;
+  border-color: #2e7d32;
+  color: #2e7d32;
+}
+
+/* "Unpaid" Active State */
+.status-radio-input:checked + .unpaid-label {
+  background-color: #fff3f0;
+  border-color: #d84315;
+  color: #d84315;
+}
+
+.status-radio-input {
+  display: none; /* Hide the default radio circle */
+}
+
+/* ========================================= */
+/* Checkbox & Print                          */
+/* ========================================= */
 
 /* 1. Base style for the unchecked box */
 .custom-checkbox {
@@ -162,12 +427,18 @@ code {
   border-color: #0077b6;
 }
 
+/* Accessibility Focus State */
+.custom-checkbox:focus-visible {
+  outline: 2px solid #0077b6;
+  outline-offset: 2px;
+}
+
 /* 3. THIS CONTROLS THE CHECKMARK ITSELF */
 .custom-checkbox:checked::after {
-  content: '✔';       /* The actual check symbol. You could change this to 'X' or anything else! */
+  content: '✔';       /* The actual check symbol */
   color: #ffffff;     /* THE COLOR OF THE CHECKMARK. Change this to any hex code! */
   font-size: 15px;    /* Size of the checkmark */
-  font-weight: 1500;   /* Thickness of the checkmark */
+  font-weight: 900;   /* Thickness of the checkmark */
   position: absolute;
 }
 

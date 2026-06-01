@@ -97,3 +97,44 @@ exports.deleteCustomer = async (req, res) => {
         res.status(500).json({ error: "Failed to complete deletion process", details: error.message });
     }
 };
+// backend/controllers/customerController.js
+
+exports.searchCustomer = async (req, res) => {
+    const { lname, fname } = req.query;
+    try {
+        let queryText = `
+            SELECT 
+                c.Cust_ID, 
+                c.Barangay_ID, 
+                c.Cust_LName, 
+                c.Cust_FName, 
+                c.Cust_Type, 
+                b.Barangay_Name, 
+                b.Purok,
+                GROUP_CONCAT(cn.Contact_Num SEPARATOR ',') AS Contact_Nums
+            FROM CUSTOMER c
+            JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+        `;
+        
+        const params = [];
+
+        // 📍 Search strictly by the column requested by the frontend
+        if (lname) {
+            queryText += ` WHERE c.Cust_LName LIKE ?`;
+            params.push(`${lname}%`);
+        } else if (fname) {
+            queryText += ` WHERE c.Cust_FName LIKE ?`;
+            params.push(`${fname}%`);
+        }
+
+        queryText += ` GROUP BY c.Cust_ID, b.Barangay_Name, b.Purok`;
+
+        const [rows] = await db.query(queryText, params);
+        res.json(rows);
+
+    } catch (err) { 
+        console.error("Database Search Error:", err); 
+        res.status(500).json({ error: err.message }); 
+    }
+};
