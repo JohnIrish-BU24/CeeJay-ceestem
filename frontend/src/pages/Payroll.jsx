@@ -1,27 +1,24 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ChevronDown, Edit2, Trash2, Plus, X, Eye, Archive, RotateCcw, CheckSquare } from 'lucide-react';
+import { Search, ChevronDown, Trash2, Plus, X, Eye, Archive, RotateCcw, CheckSquare, Info } from 'lucide-react';
 
 function Payroll() {
   const navigate = useNavigate();
   const location = useLocation();
-  const currentPath = location.pathname;
 
   const [payrollData, setPayrollData] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [searchPhrase, setSearchPhrase] = useState('');
   const [viewMode, setViewMode] = useState('Active'); // 'Active' or 'Archived'
-  const [selectedIds, setSelectedIds] = useState([]);
 
   // Modals
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
 
   // States
   const [activeRecord, setActiveRecord] = useState(null);
-  const [newPayroll, setNewPayroll] = useState({ Emp_ID: '', Start_Date: '', End_Date: '', Total_Incentive: 0, Loan: 0, Net_Pay: 0 });
+  const [newPayroll, setNewPayroll] = useState({ Emp_ID: '', Start_Date: '', End_Date: '', Loan: 0 });
 
   const fetchPayrolls = async () => {
     try {
@@ -57,37 +54,12 @@ function Payroll() {
     fetchEmployees();
   }, []);
 
-  // --- CALCULATOR UTILS ---
-  const calculateDaysWorked = (start, end) => {
+  // Simple util just to show calendar days in the UI
+  const calculateCalendarDays = (start, end) => {
     if (!start || !end) return 0;
     const diffTime = Math.abs(new Date(end) - new Date(start));
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 to include both start and end days
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; 
   };
-
-  const calculateFinancials = (record) => {
-    // 1. Calculate Calendar Days (Start Date to End Date)
-    const days = calculateDaysWorked(record.Start_Date, record.End_Date);
-    
-    // 2. Base Pay is simply Days * Daily Wage (No longer dividing by 30)
-    const dailyRate = parseFloat(record.Salary || 0); 
-    const basePay = dailyRate * days;
-    
-    // 3. Gross Income = Base Pay + Incentive
-    const grossIncome = basePay + parseFloat(record.Total_Incentive || 0);
-    
-    // 4. Net Pay = Gross Income - Loans
-    const calculatedNet = grossIncome - parseFloat(record.Loan || 0);
-    
-    return { days, basePay, grossIncome, calculatedNet };
-  };
-
-  // Auto-update Net Pay in Edit Modal when values change
-  useEffect(() => {
-    if (activeRecord && isEditModalOpen) {
-      const { calculatedNet } = calculateFinancials(activeRecord);
-      setActiveRecord(prev => ({ ...prev, Net_Pay: calculatedNet.toFixed(2) }));
-    }
-  }, [activeRecord?.Start_Date, activeRecord?.End_Date, activeRecord?.Total_Incentive, activeRecord?.Loan]);
 
   // --- HANDLERS ---
   const handleAddSubmit = async (e) => {
@@ -100,27 +72,11 @@ function Payroll() {
       });
       if (response.ok) {
         setIsAddModalOpen(false);
-        setNewPayroll({ Emp_ID: employees[0]?.Emp_ID || '', Start_Date: '', End_Date: '', Total_Incentive: 0, Loan: 0, Net_Pay: 0 });
+        setNewPayroll({ Emp_ID: employees[0]?.Emp_ID || '', Start_Date: '', End_Date: '', Loan: 0 });
         fetchPayrolls();
       } else {
-        const err = await response.json(); alert(err.error);
-      }
-    } catch (err) { console.error(err); }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      const response = await fetch(`http://localhost:5000/api/payroll/${activeRecord.Payroll_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(activeRecord)
-      });
-      if (response.ok) {
-        setIsEditModalOpen(false);
-        fetchPayrolls();
-      } else {
-        const err = await response.json(); alert(err.error);
+        const err = await response.json(); 
+        alert(err.error || "Failed to generate payroll");
       }
     } catch (err) { console.error(err); }
   };
@@ -204,7 +160,7 @@ function Payroll() {
               
               {viewMode === 'Active' && (
                 <button onClick={() => setIsAddModalOpen(true)} style={styles.addPrimaryActionButton}>
-                  <Plus size={16} /> Add Payroll
+                  <Plus size={16} /> Generate Payroll
                 </button>
               )}
             </div>
@@ -214,24 +170,22 @@ function Payroll() {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}><input type="checkbox" /></th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px', paddingLeft: '20px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '180px' }}>EMPLOYEE</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '90px' }}>ROLE</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>DAYS WORKED</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>CALENDAR DAYS</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>INCENTIVE</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>LOAN</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>NET PAY</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '140px' }}>ACTIONS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {payrollData.map((record) => {
-                  const days = calculateDaysWorked(record.Start_Date, record.End_Date);
+                  const days = calculateCalendarDays(record.Start_Date, record.End_Date);
                   return (
                     <tr key={record.Payroll_ID} style={styles.tableBodyDataRow}>
-                      <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}><input type="checkbox" /></td>
-                      <td style={styles.tableBodyCellBlock}><strong>{record.Payroll_ID}</strong></td>
+                      <td style={{...styles.tableBodyCellBlock, paddingLeft: '20px'}}><strong>{record.Payroll_ID}</strong></td>
                       <td style={styles.tableBodyCellBlock}>{record.Emp_FName} {record.Emp_LName}</td>
                       <td style={styles.tableBodyCellBlock}>
                          <span style={{ 
@@ -251,10 +205,7 @@ function Payroll() {
                           <button onClick={() => { setActiveRecord(record); setIsViewModalOpen(true); }} style={styles.inlineRowViewButton}><Eye size={16} /></button>
                           
                           {viewMode === 'Active' ? (
-                            <>
-                              <button onClick={() => { setActiveRecord({...record, Start_Date: formatDate(record.Start_Date), End_Date: formatDate(record.End_Date)}); setIsEditModalOpen(true); }} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
                               <button onClick={() => handleArchive(record.Payroll_ID)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
-                            </>
                           ) : (
                             <button onClick={() => handleRestore(record.Payroll_ID)} style={styles.inlineRowRestoreButton}><RotateCcw size={16} /> Restore</button>
                           )}
@@ -276,7 +227,7 @@ function Payroll() {
             <div style={{ ...styles.modalHeaderRow, marginBottom: '10px' }}>
               <div style={styles.modalHeaderTitleGroup}>
                 <div style={{ ...styles.modalHeaderTitleIconBox, color: '#0077b6' }}><CheckSquare size={20} /></div>
-                <h2 style={styles.modalHeaderHeadingText}>PAYROLL BREAKDOWN</h2>
+                <h2 style={styles.modalHeaderHeadingText}>PAYROLL RECORD</h2>
               </div>
               <button style={styles.modalHeaderCloseXButton} onClick={() => setIsViewModalOpen(false)}><X size={20} /></button>
             </div>
@@ -292,23 +243,13 @@ function Payroll() {
                   <p style={styles.breakdownLabel}>Base Salary (Daily Rate):</p> 
                   <p style={styles.breakdownValue}>₱ {activeRecord.Salary}</p>
 
-                  <p style={styles.breakdownLabel}>Calendar Days:</p> 
-                  <p style={styles.breakdownValue}>{calculateFinancials(activeRecord).days} Days</p>
+                  <p style={styles.breakdownLabel}>Calendar Period:</p> 
+                  <p style={styles.breakdownValue}>{calculateCalendarDays(activeRecord.Start_Date, activeRecord.End_Date)} Days</p>
                   
                   <div style={{gridColumn: 'span 2'}}><hr style={styles.breakdownDivider}/></div>
                   
-                  {/* BASE PAY + INCENTIVE FLOW */}
-                  <p style={styles.breakdownLabel}>Base Pay (Rate × Days):</p> 
-                  <p style={styles.breakdownValue}>₱ {calculateFinancials(activeRecord).basePay.toFixed(2)}</p>
-                  
-                  <p style={styles.breakdownLabel}>Total Incentive:</p> 
+                  <p style={styles.breakdownLabel}>Total Earned Incentive:</p> 
                   <p style={{...styles.breakdownValue, color: '#16a34a'}}>+ ₱ {activeRecord.Total_Incentive}</p>
-                  
-                  <div style={{gridColumn: 'span 2'}}><hr style={styles.breakdownDivider}/></div>
-                  
-                  {/* GROSS MINUS DEDUCTIONS FLOW */}
-                  <p style={styles.breakdownLabel}>Total Gross Income:</p> 
-                  <p style={{...styles.breakdownValue, color: '#0077b6'}}>₱ {calculateFinancials(activeRecord).grossIncome.toFixed(2)}</p>
                   
                   <p style={styles.breakdownLabel}>Cash Loan Deductions:</p> 
                   <p style={{...styles.breakdownValue, color: '#dc2626'}}>- ₱ {activeRecord.Loan}</p>
@@ -327,62 +268,7 @@ function Payroll() {
         </div>
       )}
 
-      {/* ================= MODAL: EDIT PAYROLL ================= */}
-      {isEditModalOpen && activeRecord && (
-        <div style={styles.modalOverlayMask}>
-          <div style={styles.modalWindowContainer}>
-            <div style={styles.modalHeaderRow}>
-              <div style={styles.modalHeaderTitleGroup}>
-                <div style={{ ...styles.modalHeaderTitleIconBox, color: '#0077b6' }}><Edit2 size={20} /></div>
-                <h2 style={styles.modalHeaderHeadingText}>EDIT PAYROLL</h2>
-              </div>
-              <button style={styles.modalHeaderCloseXButton} onClick={() => setIsEditModalOpen(false)}><X size={20} /></button>
-            </div>
-
-            <form onSubmit={handleEditSubmit} style={styles.modalContentFormElement}>
-              <div style={styles.modalFormInputFieldsDoubleColumnGrid}>
-                
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>EMPLOYEE</label>
-                  <input type="text" value={`${activeRecord.Emp_FName} ${activeRecord.Emp_LName}`} disabled style={styles.modalDisabledInputField} />
-                </div>
-                
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>START DATE <span style={{color: 'red'}}>*</span></label>
-                  <input type="date" required value={activeRecord.Start_Date} onChange={(e) => setActiveRecord({...activeRecord, Start_Date: e.target.value})} style={styles.modalActiveInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>END DATE <span style={{color: 'red'}}>*</span></label>
-                  <input type="date" required value={activeRecord.End_Date} onChange={(e) => setActiveRecord({...activeRecord, End_Date: e.target.value})} style={styles.modalActiveInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>INCENTIVE (₱)</label>
-                  <input type="number" step="0.01" value={activeRecord.Total_Incentive} onChange={(e) => setActiveRecord({...activeRecord, Total_Incentive: e.target.value})} style={styles.modalActiveInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>LOAN DEDUCTION (₱)</label>
-                  <input type="number" step="0.01" value={activeRecord.Loan} onChange={(e) => setActiveRecord({...activeRecord, Loan: e.target.value})} style={styles.modalActiveInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>AUTO-CALCULATED NET PAY</label>
-                  <input type="number" step="0.01" value={activeRecord.Net_Pay} onChange={(e) => setActiveRecord({...activeRecord, Net_Pay: e.target.value})} style={{...styles.modalActiveInputField, backgroundColor: '#eaf4fc', color: '#0077b6', fontWeight: '800'}} />
-                </div>
-              </div>
-
-              <div style={styles.modalFooterButtonsControlFlexRow}>
-                <button type="button" onClick={() => setIsEditModalOpen(false)} style={styles.modalDismissCancelButtonLink}>Cancel</button>
-                <button type="submit" style={styles.modalPrimaryActionSaveButton}>Save Changes</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL: ADD PAYROLL (Simplified for brevity) ================= */}
+      {/* ================= MODAL: GENERATE PAYROLL ================= */}
       {isAddModalOpen && (
          <div style={styles.modalOverlayMask}>
          <div style={styles.modalWindowContainer}>
@@ -395,8 +281,14 @@ function Payroll() {
            </div>
            
            <form onSubmit={handleAddSubmit} style={styles.modalContentFormElement}>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', backgroundColor: '#eef2ff', padding: '12px 16px', borderRadius: '8px', marginBottom: '24px', color: '#3730a3' }}>
+                <Info size={24} />
+                <span style={{ fontSize: '0.85rem', fontWeight: '600', lineHeight: '1.4' }}>
+                  Net Pay, Incentives, and Valid Days will be automatically calculated by the system based on the employee's transaction history for this period.
+                </span>
+              </div>
+
               <div style={styles.modalFormInputFieldsDoubleColumnGrid}>
-                 {/* Inputs: Employee Select, Start, End, Incentive, Loan, Net Pay */}
                  <div style={styles.modalFormInputGroupFieldUnit}>
                   <label style={styles.modalFormFieldLabelHeader}>EMPLOYEE <span style={{color: 'red'}}>*</span></label>
                   <div style={styles.modalSelectFieldWrapperBox}>
@@ -408,6 +300,11 @@ function Payroll() {
                  </div>
                  
                  <div style={styles.modalFormInputGroupFieldUnit}>
+                  <label style={styles.modalFormFieldLabelHeader}>LOAN ADVANCE (₱)</label>
+                  <input type="number" step="0.01" placeholder="0.00" value={newPayroll.Loan || ''} onChange={(e) => setNewPayroll({...newPayroll, Loan: e.target.value})} style={styles.modalActiveInputField} />
+                 </div>
+
+                 <div style={styles.modalFormInputGroupFieldUnit}>
                   <label style={styles.modalFormFieldLabelHeader}>START DATE <span style={{color: 'red'}}>*</span></label>
                   <input type="date" required value={newPayroll.Start_Date} onChange={(e) => setNewPayroll({...newPayroll, Start_Date: e.target.value})} style={styles.modalActiveInputField} />
                  </div>
@@ -416,16 +313,11 @@ function Payroll() {
                   <label style={styles.modalFormFieldLabelHeader}>END DATE <span style={{color: 'red'}}>*</span></label>
                   <input type="date" required value={newPayroll.End_Date} onChange={(e) => setNewPayroll({...newPayroll, End_Date: e.target.value})} style={styles.modalActiveInputField} />
                  </div>
-
-                 <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>NET PAY <span style={{color: 'red'}}>*</span></label>
-                  <input type="number" required step="0.01" value={newPayroll.Net_Pay} onChange={(e) => setNewPayroll({...newPayroll, Net_Pay: e.target.value})} style={styles.modalActiveInputField} />
-                 </div>
               </div>
               
               <div style={styles.modalFooterButtonsControlFlexRow}>
                 <button type="button" onClick={() => setIsAddModalOpen(false)} style={styles.modalDismissCancelButtonLink}>Cancel</button>
-                <button type="submit" style={styles.modalPrimaryActionSaveButton}>Save Payroll</button>
+                <button type="submit" style={styles.modalPrimaryActionSaveButton}>Generate Record</button>
               </div>
            </form>
          </div>
@@ -462,7 +354,6 @@ const styles = {
   typeBadge: { padding: '4px 12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '700' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowViewButton: { backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', color: '#4b5563', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowRestoreButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' },
   
@@ -477,7 +368,6 @@ const styles = {
   modalFormInputFieldsDoubleColumnGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px', marginBottom: '32px', width: '100%' },
   modalFormInputGroupFieldUnit: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' },
   modalFormFieldLabelHeader: { fontSize: '0.85rem', fontWeight: '800', color: '#011627', marginBottom: '10px' },
-  modalDisabledInputField: { width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #bde0fe', backgroundColor: '#d0e4f2', color: '#64748b', fontSize: '0.98rem', fontWeight: '600', outline: 'none', boxSizing: 'border-box' },
   modalActiveInputField: { width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #0077b6', backgroundColor: '#ffffff', color: '#012a4a', fontSize: '0.98rem', fontWeight: '600', outline: 'none', boxSizing: 'border-box' },
   modalSelectFieldWrapperBox: { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' },
   modalNativeDropdownSelect: { appearance: 'none', width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #0077b6', backgroundColor: '#ffffff', color: '#012a4a', fontSize: '0.98rem', fontWeight: '700', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' },
