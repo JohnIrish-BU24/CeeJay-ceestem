@@ -95,7 +95,7 @@ function Payroll() {
     } catch (err) { console.error(err); }
   };
 
-  const formatDate = (dateString) => dateString ? new Date(dateString).toISOString().split('T')[0] : '';
+  const formatDate = (dateString) => dateString ? dateString.split('T')[0] : '';
 
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
@@ -103,6 +103,7 @@ function Payroll() {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Employees') navigate('/employees');
     else if (menuName === 'Payroll') navigate('/payroll');
+    else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -259,9 +260,15 @@ function Payroll() {
                     </td>
                     {/* Replaced manual math with database values */}
                     <td style={{...styles.tableBodyCellBlock, fontWeight: '600'}}>{record.Days_Worked || 0}</td>
-                    <td style={{...styles.tableBodyCellBlock, color: '#16a34a'}}>₱ {record.Total_Incentive}</td>
-                    <td style={{...styles.tableBodyCellBlock, color: '#dc2626'}}>₱ {record.Loan}</td>
-                    <td style={{...styles.tableBodyCellBlock, fontWeight: '800', color: '#012a4a'}}>₱ {record.Net_Pay}</td>
+                    <td style={{...styles.tableBodyCellBlock, color: '#16a34a'}}>
+                      ₱ {(parseFloat(record.Total_Incentive) || 0).toFixed(2)}
+                    </td>
+                    <td style={{...styles.tableBodyCellBlock, color: '#dc2626'}}>
+                      ₱ {(parseFloat(record.Loan) || 0).toFixed(2)}
+                    </td>
+                    <td style={{...styles.tableBodyCellBlock, fontWeight: '800', color: '#012a4a'}}>
+                      ₱ {(parseFloat(record.Net_Pay) || 0).toFixed(2)}
+                    </td>
                     <td style={styles.tableBodyCellBlock} className="no-print">
                       <div style={styles.inlineActionButtonsFlexGroup}>
                         <button onClick={() => { setActiveRecord(record); setIsViewModalOpen(true); }} style={styles.inlineRowViewButton}><Eye size={16} /></button>
