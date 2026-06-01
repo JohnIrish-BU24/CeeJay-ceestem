@@ -12,7 +12,7 @@ function Employee() {
   const [roleDataMap, setRoleDataMap] = useState({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [roleFilter, setRoleFilter] = useState('All'); // NEW: Added roleFilter state
+  const [roleFilter, setRoleFilter] = useState('All'); 
   
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
@@ -286,7 +286,6 @@ function Employee() {
     else alert(`${menuName} page not yet implemented`);
   };
 
-  // UPDATED: Now filters by search query AND selected role
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.Emp_FName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           emp.Emp_LName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -347,7 +346,7 @@ function Employee() {
                 />
               </div>
 
-              {/* NEW: Role Filter Dropdown mapped to Transaction.jsx design */}
+              {/* Styled Role Filter Dropdown */}
               <div style={styles.dropdownSelectContainer}>
                 <select 
                   value={roleFilter} 
@@ -388,7 +387,8 @@ function Employee() {
                   <th style={{ ...styles.tableHeaderColumnCell, width: '80px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '220px' }}>NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>ROLE</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>SALARY</th>
+                  {/* CHANGED TO CONTACT */}
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CONTACT</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '110px' }}>DETAILS</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
                 </tr>
@@ -409,7 +409,10 @@ function Employee() {
                            {emp.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                          </span>
                       </td>
-                      <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>₱{emp.Salary || 0}</td>
+                      {/* CHANGED TO DISPLAY FIRST CONTACT NUMBER */}
+                      <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>
+                         {emp.Contact_Num ? emp.Contact_Num.split(',')[0].trim() : 'N/A'}
+                      </td>
                       <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
                          <button onClick={() => handleViewDetails(emp)} style={styles.seeMoreButton}>See More</button>
                       </td>
@@ -794,7 +797,6 @@ const styles = {
   searchLeftIcon: { position: 'absolute', left: '16px', pointerEvents: 'none' },
   searchFieldInput: { width: '100%', padding: '12px 16px 12px 46px', borderRadius: '8px', border: '1px solid #bde0fe', backgroundColor: '#eaf4fc', color: '#012a4a', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' },
   
-  /* NEW STYLES COPIED FROM TRANSACTION.JSX FOR THE DROPDOWN */
   dropdownSelectContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
   nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
   dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
