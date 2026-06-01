@@ -1,3 +1,4 @@
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Edit2, Trash2, Plus, X } from 'lucide-react';
@@ -113,6 +114,8 @@ function Services() {
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
+    else if (menuName === 'Reports') navigate('/reports');
+    else if (menuName === 'Employees') navigate('/employees');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -120,7 +123,9 @@ function Services() {
     <div style={styles.appContainer}>
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <div style={styles.brandIconContainer}>💧</div>
+          {/* Replace the emoji div with this img tag */}
+          <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
+          
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -186,7 +191,7 @@ function Services() {
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
-                    <input type="checkbox" onChange={handleToggleAll} checked={selectedIdentifiers.length === servicesList.length && servicesList.length > 0} style={styles.tableBodyCheckboxInput} />
+                    <input type="checkbox" onChange={handleToggleAll} checked={selectedIdentifiers.length === servicesList.length && servicesList.length > 0} className="custom-checkbox" />
                   </th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>SERVICE ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '350px' }}>SERVICE NAME</th>
@@ -198,7 +203,7 @@ function Services() {
                 {servicesList.map((service) => (
                   <tr key={service.Serv_ID} style={styles.tableBodyDataRow}>
                     <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
-                      <input type="checkbox" checked={selectedIdentifiers.includes(service.Serv_ID)} onChange={() => handleToggleSingle(service.Serv_ID)} style={styles.tableBodyCheckboxInput} />
+                      <input type="checkbox" checked={selectedIdentifiers.includes(service.Serv_ID)} onChange={() => handleToggleSingle(service.Serv_ID)} className="custom-checkbox" />
                     </td>
                     <td style={styles.tableBodyCellBlock}><strong>{service.Serv_ID}</strong></td>
                     <td style={styles.tableBodyCellBlock}>{service.Serv_Name}</td>
@@ -295,6 +300,7 @@ function Services() {
 }
 
 const styles = {
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
@@ -321,7 +327,7 @@ const styles = {
   tableHeaderColumnCell: { padding: '14px 10px', fontSize: '0.85rem', fontWeight: '800', color: '#64748b', letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', top: 0, backgroundColor: '#ffffff', zIndex: 10, borderBottom: '2px solid #bde0fe' },
   tableBodyDataRow: { borderBottom: '1px solid #e2e8f0', height: '52px' },
   tableBodyCellBlock: { padding: '12px 10px', fontSize: '0.9rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
-  tableBodyCheckboxInput: { width: '18px', height: '18px', cursor: 'pointer', borderRadius: '4px' },
+  tableBodyCheckboxInput: { width: '18px', height: '18px', cursor: 'pointer', borderRadius: '4px', accentColor: '#92cbea' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },

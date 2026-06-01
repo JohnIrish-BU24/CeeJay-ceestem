@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './pages/Login';
-import OwnerTransaction from './pages/OwnerTransaction';
+import Transaction from './pages/Transaction';
+import OwnerTransaction from './pages/OwnerTransaction'; // Added to fix missing import error
 import Barangay from './pages/Barangay'; 
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
 import EmployeeDashboard from './pages/EmployeeDashboard';
+import Employees from './pages/Employees';
+import Reports from './pages/Reports';
 
 const employeeCredentials = [
   { id: 'R1', password: 'ref1', role: 'refiller' },
@@ -37,7 +40,7 @@ function App() {
 
       if (foundEmployee) {
         // ==========================================
-        // INSERT THE LOCALSTORAGE SAVING LOGIC HERE
+        // LOCALSTORAGE SAVING LOGIC
         // ==========================================
         const loggedInUser = {
           id: foundEmployee.id,
@@ -67,12 +70,12 @@ function App() {
         />
         <Route path="/login" element={<Navigate to="/" replace />} />
 
-        {/* Protected Owner Routes */}
+        {/* Protected Owner & Employee Routes */}
         <Route 
           path="/transaction" 
           element={
             isAuthenticated ? (
-              userRole === 'owner' ? <OwnerTransaction /> : <EmployeeDashboard />
+              userRole === 'owner' ? <OwnerTransaction /> : <Transaction />
             ) : <Navigate to="/" replace /> 
           } 
         />
@@ -99,6 +102,16 @@ function App() {
             ? <EmployeeDashboard /> 
             : <Navigate to="/login" />
           } 
+        />
+        
+        <Route 
+          path="/employees" 
+          element={ isAuthenticated ? <Employees /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/reports" 
+          element={ isAuthenticated ? <Reports /> : <Navigate to="/" replace /> } 
         />
         
         {/* Catch-all route MUST always be at the very bottom */}

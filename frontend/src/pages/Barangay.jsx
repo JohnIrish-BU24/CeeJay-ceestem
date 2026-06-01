@@ -1,3 +1,4 @@
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
@@ -134,6 +135,8 @@ function Barangay({ onLogout }) {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Services') navigate('/services');
+    else if (menuName === 'Reports') navigate('/reports');
+    else if (menuName === 'Employees') navigate('/employees');
     else alert(`${menuName} page not yet implemented`);
   };
 
@@ -143,12 +146,13 @@ function Barangay({ onLogout }) {
       {/* ================= GLOBAL NAVIGATION HEADER MENU ================= */}
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <div style={styles.brandIconContainer}>💧</div>
-          <div style={styles.brandTextGroup}>
-            <span style={styles.brandMainTitle}>CeeStem</span>
-            <span style={styles.brandSubTitle}>WATER REFILLING</span>
-          </div>
-        </div>
+                  <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
+                  
+                  <div style={styles.brandTextGroup}>
+                    <span style={styles.brandMainTitle}>CeeStem</span>
+                    <span style={styles.brandSubTitle}>WATER REFILLING</span>
+                  </div>
+                </div>
 
         <div style={styles.navMenuLinksRow}>
           {['Dashboard', 'Transaction', 'Services', 'Customers', 'Barangay', 'Employees', 'Payroll', 'Reports'].map((menu) => {
@@ -401,6 +405,7 @@ function Barangay({ onLogout }) {
 }
 
 const styles = {
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },

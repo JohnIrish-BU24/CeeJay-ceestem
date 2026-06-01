@@ -195,3 +195,32 @@ input[type="number"] {
   -moz-appearance: textfield; /* Keeps older Firefox happy */
   appearance: textfield;      /* Keeps VS Code and modern browsers happy! */
 }
+
+.custom-checkbox {
+  appearance: none;          /* Removes the default browser styling */
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #bde0fe; /* Your app's light blue border color */
+  border-radius: 4px;
+  background-color: #ffffff; /* White background when unchecked */
+  cursor: pointer;
+  position: relative;
+  display: inline-block;
+}
+
+/* What it looks like when checked */
+.custom-checkbox:checked {
+  background-color: #0077b6; /* Your app's dark blue brand color */
+  border-color: #0077b6;
+}
+
+/* The white checkmark icon inside */
+.custom-checkbox:checked::after {
+  content: '✔';
+  color: white;
+  font-size: 14px;
+  position: absolute;
+  top: -2px;
+  left: 2px;
+}
