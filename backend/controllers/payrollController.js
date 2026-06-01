@@ -7,6 +7,7 @@ exports.getPayrolls = async (req, res) => {
         const queryText = `
             SELECT 
                 p.Payroll_ID, p.Emp_ID, p.Start_Date, p.End_Date, 
+                p.Days_Worked, p.Gross_Income, /* <-- Added new columns here */
                 p.Total_Incentive, p.Loan, p.Net_Pay, p.Status,
                 e.Emp_FName, e.Emp_LName, e.Role_ID,
                 r.Salary
@@ -25,8 +26,6 @@ exports.getPayrolls = async (req, res) => {
 
 // Create a new Payroll record (Automatically computes calculations)
 exports.createPayroll = async (req, res) => {
-    // We no longer require the frontend to pass Net_Pay or Total_Incentive.
-    // The frontend only needs to send Emp_ID, Start_Date, End_Date, and Loan (optional).
     const { Emp_ID, Start_Date, End_Date, Loan } = req.body;
     const loanAmount = Loan || 0;
 
@@ -91,15 +90,17 @@ exports.createPayroll = async (req, res) => {
             const [maxResult] = await connection.query('SELECT MAX(Payroll_ID) as maxId FROM PAYROLL_RECORD');
             let nextId = (maxResult[0].maxId || 0) + 1;
 
+            // <-- Updated INSERT query to include Days_Worked and Gross_Income
             const insertQuery = `
-                INSERT INTO PAYROLL_RECORD (Payroll_ID, Emp_ID, Start_Date, End_Date, Total_Incentive, Loan, Net_Pay, Status) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')
+                INSERT INTO PAYROLL_RECORD 
+                (Payroll_ID, Emp_ID, Start_Date, End_Date, Days_Worked, Gross_Income, Total_Incentive, Loan, Net_Pay, Status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Active')
             `;
-            await connection.query(insertQuery, [nextId, Emp_ID, Start_Date, End_Date, totalIncentive, loanAmount, netPay]);
+            await connection.query(insertQuery, [nextId, Emp_ID, Start_Date, End_Date, validDays, totalBasePay, totalIncentive, loanAmount, netPay]);
 
             await connection.commit();
             
-            // Return success with computation summary so the frontend can display the math if needed
+            // Return success with computation summary
             res.status(201).json({ 
                 message: "Payroll record generated successfully!",
                 computation: {
