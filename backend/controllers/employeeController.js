@@ -78,3 +78,19 @@ exports.loginEmployee = async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 };
+
+// 📍 Fetch only employees who are Refillers (Role_ID = 'R')
+exports.getRefillers = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT Emp_ID, Emp_FName, Emp_LName 
+            FROM EMPLOYEE 
+            WHERE Role_ID = 'R' AND Status = 'Active'
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        console.error("Error fetching refillers:", error);
+        res.status(500).json({ error: "Failed to fetch refillers." });
+    }
+};

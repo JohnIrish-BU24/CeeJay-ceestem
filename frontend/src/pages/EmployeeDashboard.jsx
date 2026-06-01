@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Trash2, Edit2, Plus, LogOut, History, User, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, Truck, PersonStanding, Info, MapPin, LayoutGrid, List, Search } from 'lucide-react';
+import { Droplet, Trash2, Plus, LogOut, History, Settings, FileText, Tag, CheckCircle, Clock, ChevronLeft, Truck, PersonStanding, Info, MapPin, LayoutGrid, List, Search, User, ChevronDown } from 'lucide-react';
 
 // 📍 Import your logo here!
 import logoImg from '../assets/logo.png'; 
@@ -41,38 +41,23 @@ const inputStyle = {
 function RadioOption({ label, value, selected, onSelect, icon, disabled }) {
   return (
     <div
-      onClick={() => {
-        // 📍 Only allow clicking if it is NOT disabled
-        if (!disabled) onSelect(value);
-      }}
+      onClick={() => { if (!disabled) onSelect(value); }}
       style={{
-        flex: 1,
-        minWidth: 130,
-        boxSizing: 'border-box',
+        flex: 1, minWidth: 130, boxSizing: 'border-box',
         border: `1px solid ${selected && !disabled ? '#1a7ab5' : '#cbe4f4'}`,
-        borderRadius: '10px',
-        padding: '10px 14px',
-        // 📍 Change the cursor if disabled
-        cursor: disabled ? 'not-allowed' : 'pointer', 
-        display: 'flex',
-        alignItems: 'center',
-        gap: 9,
-        fontSize: '14px',
-        fontWeight: 600,
-        // 📍 Grey out the text if disabled
-        color: disabled ? '#94a3b8' : (selected ? '#1a5c8a' : '#475569'), 
-        // 📍 Grey out the background if disabled
-        background: disabled ? '#f8fafc' : (selected ? '#eaf4fb' : '#ffffff'), 
-        userSelect: 'none',
-        transition: 'all 0.15s',
+        borderRadius: '10px', padding: '10px 14px',
+        cursor: disabled ? 'not-allowed' : 'pointer',
+        display: 'flex', alignItems: 'center', gap: 9,
+        fontSize: '14px', fontWeight: 600,
+        color: disabled ? '#94a3b8' : (selected ? '#1a5c8a' : '#475569'),
+        background: disabled ? '#f8fafc' : (selected ? '#eaf4fb' : '#ffffff'),
+        userSelect: 'none', transition: 'all 0.15s',
       }}
     >
       <div style={{
-        width: 18, height: 18, borderRadius: '50%',
-        boxSizing: 'border-box',
+        width: 18, height: 18, borderRadius: '50%', boxSizing: 'border-box',
         border: `2px solid ${disabled ? '#cbe4f4' : (selected ? '#1a7ab5' : '#cbe4f4')}`,
-        flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
         background: disabled ? '#f1f5f9' : '#fff'
       }}>
         {selected && <div style={{ width: 8, height: 8, borderRadius: '50%', background: disabled ? '#94a3b8' : '#1a7ab5' }} />}
@@ -129,11 +114,136 @@ function FormGroup({ label, required, children, style }) {
   );
 }
 
+// ─── Custom Aesthetic Dropdown ──────────────────────────────────────────────
+// ─── Custom Premium Dropdown ──────────────────────────────────────────────
+function CustomDropdown({ value, onChange, options, placeholder }) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const selectedOption = options.find(o => o.value === value);
+
+  // Helper function to extract initials (e.g., "Carlo Pineda" -> "CP")
+  const getInitials = (name) => {
+    if (!name) return '';
+    return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+  };
+
+  return (
+    <div style={{ position: 'relative', width: '100%' }}>
+      
+      {/* 1. Main Input Box */}
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{
+          border: `1px solid ${isOpen ? '#1a7ab5' : '#cbe4f4'}`,
+          borderRadius: '10px', padding: '0 14px', height: '44px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          background: '#f4f9fd', cursor: 'pointer',
+          color: value ? '#102a43' : '#64748b', fontSize: '14px',
+          fontWeight: value ? 600 : 500, boxSizing: 'border-box',
+          transition: 'all 0.2s ease', 
+          boxShadow: isOpen ? '0 0 0 3px rgba(26, 122, 181, 0.15)' : '0 2px 4px rgba(16, 42, 67, 0.02)'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Avatar displayed in the closed box once selected */}
+          {selectedOption && (
+            <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#1a7ab5', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700 }}>
+              {getInitials(selectedOption.label)}
+            </div>
+          )}
+          {selectedOption ? selectedOption.label : placeholder}
+        </div>
+        <ChevronDown size={18} color={isOpen ? "#1a7ab5" : "#6a9ab8"} style={{ transform: isOpen ? 'rotate(180deg)' : 'none', transition: '0.3s cubic-bezier(0.4, 0, 0.2, 1)' }} />
+      </div>
+
+      {/* Invisible closing overlay */}
+      {isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 40 }} onClick={() => setIsOpen(false)} />
+      )}
+
+      {/* 2. Floating Premium Menu */}
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 8px)', left: 0, width: '100%',
+          background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px',
+          // Softer, deeper shadow for a floating effect
+          boxShadow: '0 12px 30px -6px rgba(16, 42, 67, 0.15), 0 4px 6px -2px rgba(16, 42, 67, 0.05)', 
+          zIndex: 50, maxHeight: '240px', overflowY: 'auto', padding: '8px', boxSizing: 'border-box',
+          display: 'flex', flexDirection: 'column', gap: '4px' 
+        }}>
+          {options.length === 0 ? (
+            <div style={{ padding: '12px', fontSize: '13px', color: '#94a3b8', textAlign: 'center' }}>No refillers available</div>
+          ) : (
+            options.map((opt) => {
+              const isSelected = value === opt.value;
+              return (
+                <div
+                  key={opt.value}
+                  onClick={() => { onChange(opt.value); setIsOpen(false); }}
+                  style={{
+                    padding: '8px 12px', cursor: 'pointer', borderRadius: '8px',
+                    fontSize: '14px', color: isSelected ? '#1a5c8a' : '#334e68',
+                    fontWeight: isSelected ? 700 : 500,
+                    background: isSelected ? '#eaf4fb' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseOver={(e) => { if (!isSelected) { e.currentTarget.style.background = '#f4f9fd'; e.currentTarget.style.color = '#102a43'; } }}
+                  onMouseOut={(e) => { if (!isSelected) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#334e68'; } }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    
+                    {/* 3. The Avatar Circle */}
+                    <div style={{ 
+                      width: 28, height: 28, borderRadius: '50%', 
+                      background: isSelected ? '#1a7ab5' : '#f1f5f9', 
+                      color: isSelected ? '#fff' : '#64748b', 
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                      fontSize: '11px', fontWeight: 700,
+                      transition: 'all 0.2s'
+                    }}>
+                      {getInitials(opt.label)}
+                    </div>
+                    {opt.label}
+                    
+                  </div>
+                  
+                  {/* Checkmark for the active selection */}
+                  {isSelected && <CheckCircle size={18} color="#1a7ab5" />}
+                </div>
+              );
+            })
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Transaction Form Component ──────────────────────────────────────────────
 
 function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   
-  // ─── 1. NEW STATES GO RIGHT AT THE TOP ──────────────────────────────────
+  // 📍 1. GET THE LOGGED-IN EMPLOYEE'S ROLE
+  const storedUserData = localStorage.getItem('activeEmployee');
+  const activeRole = storedUserData ? JSON.parse(storedUserData).role : '';
+  const isRefiller = activeRole === 'R'; 
+  const isDriver = activeRole === 'D'; // 📍 Added Driver Check
+
+  // 📍 2. FETCH REFILLERS (For Drivers)
+  const [refillerList, setRefillerList] = useState([]);
+  useEffect(() => {
+    if (isDriver) {
+      const getRefillers = async () => {
+        try {
+          const res = await fetch(`${API_BASE}/employee/refillers`);
+          if (res.ok) setRefillerList(await res.json());
+        } catch (err) { console.error("Error fetching refillers:", err); }
+      };
+      getRefillers();
+    }
+  }, [isDriver]);
+
+  // ─── 2. NEW STATES GO RIGHT AT THE TOP ──────────────────────────────────
   const [customerMode, setCustomerMode] = useState(null);
   const [isLocked, setIsLocked] = useState(false);
   const [lockedContactCount, setLockedContactCount] = useState(0);
@@ -148,7 +258,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
   const [isFirstFocused, setIsFirstFocused] = useState(false);
   
 
-  // ─── 2. YOUR EXISTING FORM STATE (Untouched) ────────────────────────────
+  // ─── 3. YOUR EXISTING FORM STATE (Updated Service Type) ─────────────────
   const [form, setForm] = useState(initial || {
     custID: '',
     barangayID: '',
@@ -158,7 +268,8 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
     barangay: '', 
     customerType: 'Personal',
     contactNums: [''],
-    serviceType: 'walkin',
+    serviceType: isDriver ? 'delivery' : 'walkin', 
+    refillerEmpID: '',
     quantity: 1,
     promo: 'no',
     status: 'paid',
@@ -328,7 +439,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       {/* Section 1 */}
       <SectionCard step="1" icon={<User size={18} />} title={
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-          <span>Customer Information {customerMode === 'existing' && <span style={{fontSize: 12, color: '#1a7ab5', background: '#eaf4fb', padding: '2px 8px', borderRadius: 4, marginLeft: 8}}>Existing Mode</span>}</span>
+          <span>Customer Information {customerMode === 'existing' && <span style={{fontSize: 12, color: '#1a7ab5', background: '#eaf4fb', padding: '2px 8px', borderRadius: 4, marginLeft: 8}}>Existing</span>}</span>
           
           {isLocked && (
             <button onClick={() => { 
@@ -340,7 +451,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
               set('purok', ''); 
               set('contactNums', ['']); 
             }} style={{ fontSize: 12, background: '#fee2e2', color: '#b91c1c', border: 'none', padding: '4px 12px', borderRadius: '6px', cursor: 'pointer', fontWeight: 600 }}>
-              Unlock & Clear
+              Clear selection
             </button>
           )}
         </div>
@@ -620,11 +731,57 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
       </SectionCard>
 
       {/* Section 2 */}
-      <SectionCard step="2" icon={<Settings size={18} />} title="Service Selection">
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <RadioOption label="Walk-in (₱30.00)" value="walkin" selected={form.serviceType === 'walkin'} onSelect={v => set('serviceType', v)} icon={<PersonStanding size={18} />} />
-          <RadioOption label="Delivery (₱35.00)" value="delivery" selected={form.serviceType === 'delivery'} onSelect={v => set('serviceType', v)} icon={<Truck size={18} />} />
+      <SectionCard step="2" icon={<Settings size={18} />} title="Service Details">
+        
+        {/* 📍 USING A GRID FOR PERFECT ALIGNMENT */}
+        <div style={{ display: 'grid', gridTemplateColumns: isDriver ? '2fr 1fr' : '1fr', gap: '24px', alignItems: 'start' }}>
+          
+          {/* Column 1: Radio Buttons now have a matching label */}
+          <FormGroup label="Transaction Type" required style={{ marginBottom: 0 }}>
+            <div style={{ display: 'flex', gap: 10, height: '44px' }}>
+              <RadioOption 
+                label="Walk-in (₱30.00)" 
+                value="walkin" 
+                selected={form.serviceType === 'walkin'} 
+                onSelect={v => set('serviceType', v)} 
+                icon={<PersonStanding size={18} />} 
+                disabled={isDriver} 
+              />
+              <RadioOption 
+                label="Delivery (₱35.00)" 
+                value="delivery" 
+                selected={form.serviceType === 'delivery'} 
+                onSelect={v => set('serviceType', v)} 
+                icon={<Truck size={18} />} 
+                disabled={isRefiller} 
+              />
+            </div>
+          </FormGroup>
+
+          {/* Column 2: Refiller Dropdown */}
+          {isDriver && (
+            <FormGroup label="Assigned Refiller" required style={{ marginBottom: 0 }}>
+              <CustomDropdown
+                value={form.refillerEmpID}
+                onChange={(val) => set('refillerEmpID', val)}
+                placeholder="Select Refiller..."
+                options={refillerList.map(r => ({
+                  value: r.Emp_ID,
+                  label: `${r.Emp_FName} ${r.Emp_LName}`
+                }))}
+              />
+            </FormGroup>
+          )}
+          
         </div>
+        
+        {/* Dynamic Warning Message */}
+        {(isRefiller || isDriver) && (
+          <div style={{ fontSize: 12, color: '#64748b', marginTop: 16, display: 'flex', alignItems: 'center', gap: 6, background: '#f8fafc', padding: '8px 12px', borderRadius: 8 }}>
+            <Info color="#1a7ab5" size={14} /> 
+            {isRefiller ? 'Refillers are restricted to Walk-in transactions.' : 'Drivers are restricted to Delivery transactions.'}
+          </div>
+        )}
       </SectionCard>
 
       {/* 📍 SIDE-BY-SIDE WRAPPER FOR SECTIONS 3 & 4 */}
@@ -721,7 +878,14 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
         )}
 
         <button 
-          onClick={() => onSubmit({ ...form, total })} 
+          /* 📍 THE VALIDATION LOGIC IS INSERTED HERE */
+          onClick={() => {
+            if (isDriver && !form.refillerEmpID) {
+              alert("Please select the Refiller who prepared these containers.");
+              return;
+            }
+            onSubmit({ ...form, total });
+          }} 
           type="button" 
           disabled={loading} 
           style={{
@@ -733,7 +897,6 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
           }}
           onMouseOver={(e) => {
             if (!loading) {
-              /* 📍 Clean, slightly deeper blue (no muddy gray), and NO bouncing! */
               e.currentTarget.style.background = '#256b9e'; 
               e.currentTarget.style.boxShadow = '0 8px 24px rgba(42, 122, 181, 0.25)'; 
             }
@@ -933,6 +1096,20 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
   const [editTarget, setEditTarget] = useState(null);
   const [error, setError] = useState('');
 
+  const storedUserData = localStorage.getItem('activeEmployee');
+  const activeEmployee = storedUserData ? JSON.parse(storedUserData) : null;
+
+  let roleLabel = "Employee";
+  let RoleIcon = User;
+
+  if (activeEmployee?.role === 'R') {
+    roleLabel = "Refiller";
+    RoleIcon = Droplet;
+  } else if (activeEmployee?.role === 'D') {
+    roleLabel = "Driver";
+    RoleIcon = Truck;
+  }
+
   // Combined useEffect for both the Clock and the Body Margins
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -985,7 +1162,8 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
       Trans_Date: localTime,
       Remarks: formData.status.charAt(0).toUpperCase() + formData.status.slice(1), 
       empID: activeEmployee.id,       
-      roleID: activeEmployee.role,    
+      roleID: activeEmployee.role,
+      refillerEmpID: formData.refillerEmpID, 
       
       // 📍 CUSTOMER DETAILS (If existing, formData.custID is passed here. If new, it generates one)
       customer: {
@@ -1004,7 +1182,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
         Trans_Detail_ID: generatedTransID + 1,
         
         // 📍 THE FIX: Swap the 2 and 1 here so it matches your specific database!
-        Serv_ID: formData.serviceType === 'delivery' ? 1 : 2, 
+        Serv_ID: formData.serviceType === 'delivery' ? 2 : 1,
         
         Quantity: Number(formData.quantity),
         Selling_Price: Number(formData.total),
@@ -1114,13 +1292,15 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
         
 
         <div style={{ display: 'flex', gap: 16 }}>
-          <div style={{ 
-            background: 'rgba(255, 255, 255, 0.08)', color: '#ffffff', borderRadius: '30px', 
-            padding: '0 16px', fontSize: 14, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
-            border: '1px solid rgba(255, 255, 255, 0.12)'
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', 
+            border: '1px solid #334e68', borderRadius: '999px',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)', color: '#f8fafc'
           }}>
-            <User size={16} color="#90cdf4" /> 
-            {refiller}
+            <RoleIcon size={18} color="#7cc4fa" /> 
+            <span style={{ fontSize: '14px', fontWeight: 600, letterSpacing: '0.5px' }}>
+              {roleLabel}
+            </span>
           </div>
           
           {/* 📍 DARK THEMED SEARCH BAR */}

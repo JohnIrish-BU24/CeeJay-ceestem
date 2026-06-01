@@ -64,7 +64,7 @@ exports.createTransaction = async (req, res) => {
     // ==========================================
     // ---> STEP 3a: ADD roleID TO THIS LIST <---
     // ==========================================
-    const { Trans_ID, Trans_Date, Remarks, items, customer, empID, roleID } = req.body;
+    const { Trans_ID, Trans_Date, Remarks, items, customer, empID, roleID, refillerEmpID } = req.body;
     
     const connection = await db.getConnection();
     try {
@@ -115,10 +115,6 @@ exports.createTransaction = async (req, res) => {
             throw new Error("Validation Error: Could not assign a valid Barangay_ID.");
         }
 
-        // ==========================================
-        // 3 & 4. CHECK AND INSERT CUSTOMER (IF NEW)
-        // ==========================================
-        // 📍 THIS IS THE FIX: Check if the customer already exists in the database
         // ==========================================
         // 3 & 4. CHECK AND INSERT/UPDATE CUSTOMER
         // ==========================================
@@ -185,13 +181,19 @@ exports.createTransaction = async (req, res) => {
         // ==========================================
         // 7. INSERT INTO WORK_DETAIL
         // ==========================================
+        // First, log the employee doing the transaction (e.g., The Driver)
         await connection.query(
             `INSERT INTO WORK_DETAIL (Trans_ID, Emp_ID, Role_ID) VALUES (?, ?, ?)`,
-            // ==========================================
-            // ---> STEP 3b: REPLACE 'R' WITH roleID <---
-            // ==========================================
             [Trans_ID, empID, roleID]
         );
+
+        // 📍 SECOND INSERT: If the Driver assigned a Refiller, save them to the same transaction!
+        if (refillerEmpID) {
+            await connection.query(
+                `INSERT INTO WORK_DETAIL (Trans_ID, Emp_ID, Role_ID) VALUES (?, ?, 'R')`,
+                [Trans_ID, refillerEmpID]
+            );
+        }
 
         await connection.commit();
         res.status(201).json({ message: "Transaction successful" });
