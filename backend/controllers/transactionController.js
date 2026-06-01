@@ -94,7 +94,7 @@ exports.createTransaction = async (req, res) => {
                     finalBarangayID = rows[0].Barangay_ID;
                     console.log("DEBUG: Found existing ID:", finalBarangayID);
                 } else {
-                    finalBarangayID = 'B' + Date.now().toString().slice(-5);
+                    finalBarangayID = 'B' + Math.random().toString(36).substring(2, 5).toUpperCase();
                     console.log("DEBUG: Creating new Barangay ID:", finalBarangayID);
                     
                     await connection.query(

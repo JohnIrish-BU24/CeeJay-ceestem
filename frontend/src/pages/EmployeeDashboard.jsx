@@ -817,7 +817,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
               }
             >
               <div style={{ height: 44, boxSizing: 'border-box', display: 'flex', alignItems: 'center', padding: '0 16px', borderRadius: '10px', fontSize: 14, fontWeight: 600, background: isPromo ? '#dcfce7' : '#f4f9fd', border: `1px solid ${isPromo ? '#bbf7d0' : '#cbe4f4'}`, color: isPromo ? '#15803d' : '#6a9ab8', transition: '0.2s' }}>
-                {isPromo ? 'Promo Applied (Get 1 Free gallon)' : 'No Promo Applied'}
+                {isPromo ? 'Promo Applied' : 'No Promo Applied'}
               </div>
             </FormGroup>
           </div>
@@ -1152,7 +1152,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
     const activeEmployee = JSON.parse(storedUserData);
 
     // 1. Generate Transaction Details
-    const generatedTransID = parseInt(Date.now().toString().slice(-9));
+    const generatedTransID = Math.floor(10000 + Math.random() * 90000);
     const tzoffset = (new Date()).getTimezoneOffset() * 60000;
     const localTime = (new Date(Date.now() - tzoffset)).toISOString().slice(0, 19).replace('T', ' ');
     
@@ -1167,7 +1167,7 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
       
       // 📍 CUSTOMER DETAILS (If existing, formData.custID is passed here. If new, it generates one)
       customer: {
-        Cust_ID: formData.custID || 'C' + Date.now().toString().slice(-6), 
+        Cust_ID: formData.custID || 'C' + Math.random().toString(36).substring(2, 6).toUpperCase(), 
         Barangay_ID: formData.barangayID || null, 
         Barangay_Name: formData.barangay, 
         Purok: formData.purok,
