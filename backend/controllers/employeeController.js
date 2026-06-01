@@ -2,16 +2,22 @@ const db = require('../config/db');
 
 exports.getAllEmployees = async (req, res) => {
     try {
+        // Added GROUP_CONCAT to bundle multiple numbers into one comma-separated string
+        // Grouped by Emp_ID to prevent duplicate employee rows in the table
         const queryText = `
             SELECT 
                 e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
                 jr.Salary, jr.Quota, jr.Incentive_Rate,
-                en.Contact_Num,
+                GROUP_CONCAT(en.Contact_Num SEPARATOR ', ') as Contact_Num,
                 d.License_Num, d.License_Exp
             FROM EMPLOYEE e
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
             LEFT JOIN EMPLOYEE_NUM en ON e.Emp_ID = en.Emp_ID
             LEFT JOIN DRIVER d ON e.Emp_ID = d.Emp_ID
+            GROUP BY 
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
+                jr.Salary, jr.Quota, jr.Incentive_Rate, 
+                d.License_Num, d.License_Exp
         `;
         const [rows] = await db.query(queryText);
         res.json(rows);
@@ -50,11 +56,25 @@ exports.createEmployee = async (req, res) => {
                 await connection.query(`INSERT INTO REFILLER (Emp_ID) VALUES (?)`, [Emp_ID]);
             }
 
+            // --- MANUAL AUTO-INCREMENT LOGIC ---
             if (Contact_Num) {
-                const cleanContactNum = String(Contact_Num).replace(/\D/g, '');
-                const numQuery = `INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)`;
-                const generatedNumId = Math.floor(Date.now() / 1000); 
-                await connection.query(numQuery, [generatedNumId, Emp_ID, cleanContactNum]);
+                // 1. Find the current highest Num_ID in the table
+                const [maxResult] = await connection.query('SELECT MAX(Num_ID) as maxId FROM EMPLOYEE_NUM');
+                // 2. Start at maxId + 1 (or 1 if the table is completely empty)
+                let nextNumId = (maxResult[0].maxId || 0) + 1;
+
+                const contactsArray = String(Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
+                
+                for (const contact of contactsArray) {
+                    const cleanContactNum = contact.replace(/\D/g, '');
+                    if (cleanContactNum) {
+                        const numQuery = `INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)`;
+                        // 3. Insert using the manual ID
+                        await connection.query(numQuery, [nextNumId, Emp_ID, cleanContactNum]);
+                        // 4. Increment the ID for the next contact in the loop
+                        nextNumId++; 
+                    }
+                }
             }
 
             await connection.commit();
@@ -81,14 +101,24 @@ exports.updateEmployee = async (req, res) => {
 
             await connection.query(`UPDATE EMPLOYEE SET Role_ID = ?, Emp_LName = ?, Emp_FName = ? WHERE Emp_ID = ?`, [Role_ID, Emp_LName, Emp_FName, id]);
 
+            // --- MANUAL AUTO-INCREMENT LOGIC ---
             if (Contact_Num !== undefined) {
-                const cleanContactNum = String(Contact_Num).replace(/\D/g, '');
-                const [existing] = await connection.query('SELECT * FROM EMPLOYEE_NUM WHERE Emp_ID = ?', [id]);
-                if (existing.length > 0) {
-                    await connection.query('UPDATE EMPLOYEE_NUM SET Contact_Num = ? WHERE Emp_ID = ?', [cleanContactNum, id]);
-                } else {
-                    const generatedNumId = Math.floor(Date.now() / 1000);
-                    await connection.query('INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)', [generatedNumId, id, cleanContactNum]);
+                await connection.query('DELETE FROM EMPLOYEE_NUM WHERE Emp_ID = ?', [id]);
+                
+                // 1. Find the current highest Num_ID in the table
+                const [maxResult] = await connection.query('SELECT MAX(Num_ID) as maxId FROM EMPLOYEE_NUM');
+                // 2. Start at maxId + 1
+                let nextNumId = (maxResult[0].maxId || 0) + 1;
+
+                const contactsArray = String(Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
+                for (const contact of contactsArray) {
+                    const cleanContactNum = contact.replace(/\D/g, '');
+                    if (cleanContactNum) {
+                        // 3. Insert using the manual ID
+                        await connection.query('INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)', [nextNumId, id, cleanContactNum]);
+                        // 4. Increment the ID for the next contact
+                        nextNumId++;
+                    }
                 }
             }
 
@@ -117,7 +147,17 @@ exports.updateEmployee = async (req, res) => {
             connection.release();
         }
     } catch (error) {
-        res.status(500).json({ error: "Failed to update employee", details: error.message });
+        let customMessage = "Failed to update employee";
+        
+        if (error.code === 'ER_DUP_ENTRY') {
+            customMessage = "Duplicate Entry Detected: The contact number or license number you entered is already registered to another employee.";
+        } else if (error.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
+            customMessage = "Validation Error: Ensure contact numbers are exactly 11 digits and start with 09.";
+        } else if (error.code === 'ER_TRUNCATED_WRONG_VALUE' || error.code === 'ER_WRONG_VALUE') {
+            customMessage = "Data Format Error: Check the expiry date or number formatting.";
+        }
+
+        res.status(500).json({ error: customMessage, details: error.message });
     }
 };
 
@@ -130,8 +170,8 @@ exports.deleteEmployee = async (req, res) => {
             
             // Delete from all child tables first to prevent Foreign Key constraint errors
             await connection.query('DELETE FROM EMPLOYEE_NUM WHERE Emp_ID = ?', [id]);
-            await connection.query('DELETE FROM WORK_DETAIL WHERE Emp_ID = ?', [id]); // Clear trans ties
-            await connection.query('DELETE FROM PAYROLL_RECORD WHERE Emp_ID = ?', [id]); // Clear payroll ties
+            await connection.query('DELETE FROM WORK_DETAIL WHERE Emp_ID = ?', [id]); 
+            await connection.query('DELETE FROM PAYROLL_RECORD WHERE Emp_ID = ?', [id]); 
             await connection.query('DELETE FROM DRIVER WHERE Emp_ID = ?', [id]);
             await connection.query('DELETE FROM REFILLER WHERE Emp_ID = ?', [id]);
             

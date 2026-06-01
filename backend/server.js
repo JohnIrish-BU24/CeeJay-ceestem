@@ -14,7 +14,8 @@ const customerRoutes = require('./routes/customerRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const transactionRoutes = require('./routes/transactionRoutes');
 const reportRoutes = require('./routes/reportRoutes');
-const serviceRoutes = require('./routes/serviceRoutes'); // Added Services route handler
+const serviceRoutes = require('./routes/serviceRoutes');
+const payrollRoutes = require('./routes/payrollRoutes');
 
 // Mount API Endpoints to application path routing gateway
 app.use('/api/barangay', barangayRoutes);
@@ -22,7 +23,8 @@ app.use('/api/customer', customerRoutes);
 app.use('/api/employee', employeeRoutes);
 app.use('/api/transaction', transactionRoutes);
 app.use('/api/report', reportRoutes);
-app.use('/api/service', serviceRoutes); // Services module API mapping
+app.use('/api/service', serviceRoutes);
+app.use('/api/payroll', payrollRoutes);
 
 // Root landing health-check sanity endpoint
 app.get('/', (req, res) => {

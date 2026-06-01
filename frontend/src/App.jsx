@@ -6,6 +6,7 @@ import Barangay from './pages/Barangay';
 import Customer from './pages/Customer';
 import Services from './pages/Services'; 
 import Employees from './pages/Employees';
+import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 
 function App() {
@@ -58,6 +59,11 @@ function App() {
         <Route 
           path="/employees" 
           element={ isAuthenticated ? <Employees /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/payroll" 
+          element={ isAuthenticated ? <Payroll /> : <Navigate to="/" replace /> } 
         />
 
         <Route 

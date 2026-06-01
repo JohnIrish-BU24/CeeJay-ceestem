@@ -166,6 +166,7 @@ function Transaction({ onLogout }) {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Employees') navigate('/employees');
+    else if (menuName === 'Payroll') navigate('/payroll');
     else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
