@@ -412,7 +412,7 @@ function TransactionForm({ initial, onSubmit, onCancel, loading }) {
 
           <button onClick={onCancel} 
             style={{ marginTop: '28px', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', fontWeight: 500 }}>
-            Go back
+            Cancel
           </button>
         </div>
       </div>

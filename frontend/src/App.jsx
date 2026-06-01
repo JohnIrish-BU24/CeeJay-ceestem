@@ -63,18 +63,25 @@ function App() {
   return (
     <Router>
       <Routes>
+        {/* 1. Dynamic Root Route: Send owners to transaction, employees to dashboard */}
         <Route 
           path="/" 
-          element={ isAuthenticated ? <Navigate to="/transaction" replace /> : <Login onLoginVerify={handleLoginVerify} /> } 
+          element={ 
+            isAuthenticated ? (
+              userRole === 'owner' ? <Navigate to="/transaction" replace /> : <Navigate to="/employee" replace />
+            ) : (
+              <Login onLoginVerify={handleLoginVerify} /> 
+            )
+          } 
         />
         <Route path="/login" element={<Navigate to="/" replace />} />
 
-        {/* Protected Owner & Employee Routes */}
+        {/* 2. Protected Transaction Route: Ensure only owners can stay here */}
         <Route 
           path="/transaction" 
           element={
             isAuthenticated ? (
-              userRole === 'owner' ? <Transaction /> : <Transaction />
+              userRole === 'owner' ? <Transaction /> : <Navigate to="/employee" replace />
             ) : <Navigate to="/" replace /> 
           } 
         />
