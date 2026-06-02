@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Archive, RotateCcw, Edit2, Plus, X, Eye, User, Phone, Info, LogOut } from 'lucide-react';
+import { Search, ChevronDown, Archive, RotateCcw, Edit2, Plus, X, Eye, User, Phone, Info, LogOut, Settings } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function Employees() {
@@ -48,6 +48,11 @@ function Employees() {
   const [passwordStage, setPasswordStage] = useState('verify');
   const [ownerPasswordInput, setOwnerPasswordInput] = useState('');
   const [newEmployeePassword, setNewEmployeePassword] = useState('');
+
+  // ---------------- NEW: JOB ROLE MANAGER MODAL STATES ----------------
+  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
+  const [editingRoleId, setEditingRoleId] = useState(null);
+  const [roleFormData, setRoleFormData] = useState({ Salary: '', Quota: '', Incentive_Rate: '' });
 
   const fetchData = async () => {
     try {
@@ -384,6 +389,39 @@ function Employees() {
     else alert(`${menuName} page not yet implemented`);
   };
 
+  // ---------------- NEW FUNCTIONS FOR JOB ROLES ----------------
+  const openRoleModal = () => setIsRoleModalOpen(true);
+  const closeRoleModal = () => { setIsRoleModalOpen(false); setEditingRoleId(null); };
+
+  const handleRoleEditToggle = (roleId) => {
+      const role = roleDataMap[roleId];
+      if (role) {
+          setEditingRoleId(roleId);
+          setRoleFormData({ Salary: role.Salary, Quota: role.Quota, Incentive_Rate: role.Incentive_Rate });
+      }
+  };
+
+  const handleRoleSave = async (roleId) => {
+      try {
+          const response = await fetch(`http://localhost:5000/api/employee/roles/${roleId}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(roleFormData)
+          });
+          if (response.ok) {
+              alert('Role Settings updated successfully!');
+              setEditingRoleId(null);
+              fetchData(); // Refresh UI to get latest settings
+          } else {
+              const err = await response.json();
+              alert(`Failed to update role: ${err.error}`);
+          }
+      } catch (error) {
+          console.error('Error updating role:', error);
+          alert('Network error while updating role settings.');
+      }
+  };
+
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.Emp_FName.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           emp.Emp_LName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -447,7 +485,6 @@ function Employees() {
                 />
               </div>
 
-              {/* Styled Role Filter Dropdown */}
               <div style={styles.dropdownSelectContainer}>
                 <select 
                   value={roleFilter} 
@@ -471,9 +508,14 @@ function Employees() {
               </button>
 
               {viewMode === 'Active' && (
-                <button onClick={() => setIsModalOpen(true)} style={styles.addPrimaryActionButton}>
-                  <Plus size={16} /> Add Employee
-                </button>
+                <>
+                  <button onClick={openRoleModal} style={styles.manageRolesBtn}>
+                    <Settings size={16} /> Manage Roles
+                  </button>
+                  <button onClick={() => setIsModalOpen(true)} style={styles.addPrimaryActionButton}>
+                    <Plus size={16} /> Add Employee
+                  </button>
+                </>
               )}
             </div>
           </div>
@@ -505,7 +547,7 @@ function Employees() {
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>ROLE</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CONTACT</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '110px' }}>DETAILS</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '140px' }}>ACTIONS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -547,13 +589,86 @@ function Employees() {
                     </tr>
                   ))
                 ) : (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '40px' }}>No employees found.</td></tr>
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '20px' }}>No employees found.</td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
+
+      {/* JOB ROLES & COMPENSATION MANAGER MODAL */}
+      {isRoleModalOpen && (
+        <div style={styles.modalOverlayMask}>
+          <div style={{ ...styles.profileModalContainer, maxWidth: '900px' }}>
+            <div style={styles.modalHeaderRow}>
+              <div style={styles.modalHeaderTitleGroup}>
+                <div style={{ ...styles.modalHeaderTitleIconBox, width: '30px', display: 'flex', alignItems: 'center', color: '#0077b6' }}><Settings size={20} /></div>
+                <h2 style={styles.modalHeaderHeadingText}>JOB ROLES & COMPENSATION</h2>
+              </div>
+              <button style={styles.modalHeaderCloseXButton} onClick={closeRoleModal}><X size={20} /></button>
+            </div>
+
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '10px' }}>
+                <thead>
+                    <tr style={styles.tableHeadBorderRow}>
+                        <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'left', width: '150px' }}>ROLE</th>
+                        <th style={styles.tableHeaderColumnCell}>BASE SALARY (₱)</th>
+                        <th style={styles.tableHeaderColumnCell}>DAILY QUOTA</th>
+                        <th style={styles.tableHeaderColumnCell}>INCENTIVE RATE (₱)</th>
+                        <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '150px' }}>ACTIONS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {Object.values(roleDataMap).map((role) => (
+                        <tr key={role.Role_ID} style={styles.tableBodyDataRow}>
+                            <td style={styles.tableBodyCellBlock}><strong>{role.Role_ID === 'D' ? 'Driver (D)' : 'Refiller (R)'}</strong></td>
+                            
+                            <td style={styles.tableBodyCellBlock}>
+                                {editingRoleId === role.Role_ID ? (
+                                    <input type="number" value={roleFormData.Salary} onChange={(e) => setRoleFormData({...roleFormData, Salary: e.target.value})} style={styles.modalActiveInputField} />
+                                ) : (
+                                    role.Salary
+                                )}
+                            </td>
+                            
+                            <td style={styles.tableBodyCellBlock}>
+                                {editingRoleId === role.Role_ID ? (
+                                    <input type="number" value={roleFormData.Quota} onChange={(e) => setRoleFormData({...roleFormData, Quota: e.target.value})} style={styles.modalActiveInputField} />
+                                ) : (
+                                    role.Quota
+                                )}
+                            </td>
+                            
+                            <td style={styles.tableBodyCellBlock}>
+                                {editingRoleId === role.Role_ID ? (
+                                    <input type="number" value={roleFormData.Incentive_Rate} onChange={(e) => setRoleFormData({...roleFormData, Incentive_Rate: e.target.value})} style={styles.modalActiveInputField} />
+                                ) : (
+                                    role.Incentive_Rate
+                                )}
+                            </td>
+                            
+                            <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
+                                {editingRoleId === role.Role_ID ? (
+                                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                        <button onClick={() => handleRoleSave(role.Role_ID)} style={{ ...styles.modalPrimaryActionSaveButton, padding: '6px 12px', fontSize: '0.8rem' }}>Save</button>
+                                        <button onClick={() => setEditingRoleId(null)} style={{ ...styles.modalDismissCancelButtonLink, padding: '6px 12px', fontSize: '0.8rem' }}>Cancel</button>
+                                    </div>
+                                ) : (
+                                    <button onClick={() => handleRoleEditToggle(role.Role_ID)} style={styles.seeMoreButton}>Edit Role Settings</button>
+                                )}
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '15px' }}>
+              <button onClick={closeRoleModal} style={styles.modalPrimaryActionSaveButton}>Done</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VIEW DETAILS MODAL */}
       {detailsModalOpen && selectedEmp && (
@@ -935,16 +1050,16 @@ const styles = {
   nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
   dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
 
+  manageRolesBtn: { backgroundColor: '#ffffff', color: '#0077b6', border: '1px solid #0077b6', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
   addPrimaryActionButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.2)' },
   
   batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
   batchSelectionCountLabel: { color: '#b45309', fontWeight: '700', fontSize: '0.95rem' },
   batchDeleteActionButton: { backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' },
   batchCancelActionButton: { backgroundColor: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer' },
-  
-  scrollableTableContainer: { overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'block', minHeight: 0, flex: 1 },
-  ledgerTableMarkup: { width: '100%', minWidth: '1000px', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' },
+  ledgerTableMarkup: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' },
   tableHeadBorderRow: { borderBottom: '2px solid #bde0fe' },
+  scrollableTableContainer: { overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 },
   tableHeaderColumnCell: { padding: '14px 10px', fontSize: '0.85rem', fontWeight: '800', color: '#64748b', letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', top: 0, backgroundColor: '#ffffff', zIndex: 10, borderBottom: '2px solid #bde0fe' },
   tableBodyDataRow: { borderBottom: '1px solid #e2e8f0', height: '52px' },
   tableBodyCellBlock: { padding: '12px 10px', fontSize: '0.9rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },

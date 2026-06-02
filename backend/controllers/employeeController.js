@@ -1,13 +1,14 @@
 const db = require('../config/db');
 
 exports.getAllEmployees = async (req, res) => {
+    // 1. Extract the status from the URL query, defaulting to 'Active'
     const { status } = req.query;
-    const filterStatus = status || 'Active'; 
-    
+    const filterStatus = status || 'Active';
+
     try {
         const queryText = `
             SELECT 
-                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status,
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status, 
                 jr.Salary, jr.Quota, jr.Incentive_Rate,
                 GROUP_CONCAT(en.Contact_Num SEPARATOR ', ') as Contact_Num,
                 d.License_Num, d.License_Exp
@@ -15,12 +16,14 @@ exports.getAllEmployees = async (req, res) => {
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
             LEFT JOIN EMPLOYEE_NUM en ON e.Emp_ID = en.Emp_ID
             LEFT JOIN DRIVER d ON e.Emp_ID = d.Emp_ID
-            WHERE e.Status = ?
+            WHERE e.Status = ? -- 2. Filter by the requested status here
             GROUP BY 
                 e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status,
                 jr.Salary, jr.Quota, jr.Incentive_Rate, 
                 d.License_Num, d.License_Exp
         `;
+        
+        // 3. Pass the filterStatus into the query
         const [rows] = await db.query(queryText, [filterStatus]);
         res.json(rows);
     } catch (error) {
@@ -60,9 +63,7 @@ exports.createEmployee = async (req, res) => {
 
             // --- MANUAL AUTO-INCREMENT LOGIC ---
             if (Contact_Num) {
-                // 1. Find the current highest Num_ID in the table
                 const [maxResult] = await connection.query('SELECT MAX(Num_ID) as maxId FROM EMPLOYEE_NUM');
-                // 2. Start at maxId + 1 (or 1 if the table is completely empty)
                 let nextNumId = (maxResult[0].maxId || 0) + 1;
 
                 const contactsArray = String(Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
@@ -71,9 +72,7 @@ exports.createEmployee = async (req, res) => {
                     const cleanContactNum = contact.replace(/\D/g, '');
                     if (cleanContactNum) {
                         const numQuery = `INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)`;
-                        // 3. Insert using the manual ID
                         await connection.query(numQuery, [nextNumId, Emp_ID, cleanContactNum]);
-                        // 4. Increment the ID for the next contact in the loop
                         nextNumId++; 
                     }
                 }
@@ -95,7 +94,6 @@ exports.createEmployee = async (req, res) => {
 exports.loginEmployee = async (req, res) => {
     const { username, password } = req.body;
     try {
-        // Query database for matching Emp_ID and Password
         const [rows] = await db.query(
             'SELECT Emp_ID, Role_ID FROM EMPLOYEE WHERE Emp_ID = ? AND Password = ?', 
             [username, password]
@@ -110,7 +108,6 @@ exports.loginEmployee = async (req, res) => {
     }
 };
 
-// 📍 Fetch only employees who are Refillers (Role_ID = 'R')
 exports.getRefillers = async (req, res) => {
     try {
         const queryText = `
@@ -137,22 +134,16 @@ exports.updateEmployee = async (req, res) => {
 
             await connection.query(`UPDATE EMPLOYEE SET Role_ID = ?, Emp_LName = ?, Emp_FName = ? WHERE Emp_ID = ?`, [Role_ID, Emp_LName, Emp_FName, id]);
 
-            // --- MANUAL AUTO-INCREMENT LOGIC ---
             if (Contact_Num !== undefined) {
                 await connection.query('DELETE FROM EMPLOYEE_NUM WHERE Emp_ID = ?', [id]);
-                
-                // 1. Find the current highest Num_ID in the table
                 const [maxResult] = await connection.query('SELECT MAX(Num_ID) as maxId FROM EMPLOYEE_NUM');
-                // 2. Start at maxId + 1
                 let nextNumId = (maxResult[0].maxId || 0) + 1;
 
                 const contactsArray = String(Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
                 for (const contact of contactsArray) {
                     const cleanContactNum = contact.replace(/\D/g, '');
                     if (cleanContactNum) {
-                        // 3. Insert using the manual ID
                         await connection.query('INSERT INTO EMPLOYEE_NUM (Num_ID, Emp_ID, Contact_Num) VALUES (?, ?, ?)', [nextNumId, id, cleanContactNum]);
-                        // 4. Increment the ID for the next contact
                         nextNumId++;
                     }
                 }
@@ -184,15 +175,9 @@ exports.updateEmployee = async (req, res) => {
         }
     } catch (error) {
         let customMessage = "Failed to update employee";
-        
-        if (error.code === 'ER_DUP_ENTRY') {
-            customMessage = "Duplicate Entry Detected: The contact number or license number you entered is already registered to another employee.";
-        } else if (error.code === 'ER_CHECK_CONSTRAINT_VIOLATED') {
-            customMessage = "Validation Error: Ensure contact numbers are exactly 11 digits and start with 09.";
-        } else if (error.code === 'ER_TRUNCATED_WRONG_VALUE' || error.code === 'ER_WRONG_VALUE') {
-            customMessage = "Data Format Error: Check the expiry date or number formatting.";
-        }
-
+        if (error.code === 'ER_DUP_ENTRY') customMessage = "Duplicate Entry Detected: The contact number or license number you entered is already registered to another employee.";
+        else if (error.code === 'ER_CHECK_CONSTRAINT_VIOLATED') customMessage = "Validation Error: Ensure contact numbers are exactly 11 digits and start with 09.";
+        else if (error.code === 'ER_TRUNCATED_WRONG_VALUE' || error.code === 'ER_WRONG_VALUE') customMessage = "Data Format Error: Check the expiry date or number formatting.";
         res.status(500).json({ error: customMessage, details: error.message });
     }
 };
@@ -203,18 +188,15 @@ exports.deleteEmployee = async (req, res) => {
         const connection = await db.getConnection();
         try {
             await connection.beginTransaction();
-            
-            // Delete from all child tables first to prevent Foreign Key constraint errors
             await connection.query('DELETE FROM EMPLOYEE_NUM WHERE Emp_ID = ?', [id]);
             await connection.query('DELETE FROM WORK_DETAIL WHERE Emp_ID = ?', [id]); 
             await connection.query('DELETE FROM PAYROLL_RECORD WHERE Emp_ID = ?', [id]); 
             await connection.query('DELETE FROM DRIVER WHERE Emp_ID = ?', [id]);
             await connection.query('DELETE FROM REFILLER WHERE Emp_ID = ?', [id]);
             
-            // Finally delete the core employee
             const [result] = await connection.query('DELETE FROM EMPLOYEE WHERE Emp_ID = ?', [id]);
-            
             await connection.commit();
+            
             if (result.affectedRows === 0) return res.status(404).json({ error: "Employee not found." });
             res.status(200).json({ message: "Employee successfully deleted." });
         } catch (error) {
@@ -228,24 +210,21 @@ exports.deleteEmployee = async (req, res) => {
     }
 };
 
-exports.archiveEmployee = async (req, res) => {
-    const { id } = req.params;
-    try {
-        const queryText = "UPDATE EMPLOYEE SET Status = 'Archived' WHERE Emp_ID = ?";
-        await db.query(queryText, [id]);
-        res.json({ message: "Employee archived successfully" });
-    } catch (error) {
-        res.status(500).json({ error: "Failed to archive employee", details: error.message });
-    }
-};
+// NEW: Function to handle updating the job role configurations
+exports.updateRole = async (req, res) => {
+    const { id } = req.params; 
+    const { Salary, Quota, Incentive_Rate } = req.body;
 
-exports.restoreEmployee = async (req, res) => {
-    const { id } = req.params;
     try {
-        const queryText = "UPDATE EMPLOYEE SET Status = 'Active' WHERE Emp_ID = ?";
-        await db.query(queryText, [id]);
-        res.json({ message: "Employee restored successfully" });
+        const query = `
+            UPDATE JOB_ROLE 
+            SET Salary = ?, Quota = ?, Incentive_Rate = ? 
+            WHERE Role_ID = ?
+        `;
+        await db.query(query, [Salary, Quota, Incentive_Rate, id]);
+        res.status(200).json({ message: "Job role updated successfully" });
     } catch (error) {
-        res.status(500).json({ error: "Failed to restore employee", details: error.message });
+        console.error("Error updating job role:", error);
+        res.status(500).json({ error: "Failed to update job role" });
     }
 };

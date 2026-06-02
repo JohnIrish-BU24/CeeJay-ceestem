@@ -1,12 +1,12 @@
 const db = require('../config/db');
 
-// 1. Get the Customer Master List (Filtered by Status)
+// 1. Get the Customer Master List (Filtered by Status, Barangay, and Type)
 exports.getAllCustomers = async (req, res) => {
-    const { status } = req.query;
+    const { status, barangay, customerType } = req.query;
     const filterStatus = status || 'Active'; 
     
     try {
-        const queryText = `
+        let queryText = `
             SELECT 
                 c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, c.Status,
                 b.Barangay_Name, b.Purok,
@@ -15,11 +15,28 @@ exports.getAllCustomers = async (req, res) => {
             JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
             LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
             WHERE c.Status = ?
+        `;
+        
+        const queryParams = [filterStatus];
+
+        // 📍 Dynamically append filters if they are provided
+        if (barangay) {
+            queryText += ` AND b.Barangay_Name = ?`;
+            queryParams.push(barangay);
+        }
+
+        if (customerType) {
+            queryText += ` AND c.Cust_Type = ?`;
+            queryParams.push(customerType);
+        }
+
+        queryText += `
             GROUP BY 
                 c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, c.Status,
                 b.Barangay_Name, b.Purok
         `;
-        const [rows] = await db.query(queryText, [filterStatus]);
+
+        const [rows] = await db.query(queryText, queryParams);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve customer directory", details: error.message });

@@ -11,7 +11,10 @@ function Customer({ onLogout }) {
   const [customerDataList, setCustomerDataList] = useState([]);
   const [barangayOptions, setBarangayOptions] = useState([]);
   const [searchPhrase, setSearchPhrase] = useState('');
-  const [viewMode, setViewMode] = useState('Active'); 
+  const [viewMode, setViewMode] = useState('Active');
+  const [filterBarangay, setFilterBarangay] = useState('');
+  const [filterType, setFilterType] = useState(''); 
+  const uniqueBarangays = [...new Set(barangayOptions.map(b => b.Barangay_Name))];
   
   const [isAddEntryModalOpen, setIsAddEntryModalOpen] = useState(false);
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
@@ -28,7 +31,12 @@ function Customer({ onLogout }) {
 
   const fetchCustomerRecords = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/customer?status=${viewMode}`);
+      // 📍 Append filters to the URL
+      let url = `http://localhost:5000/api/customer?status=${viewMode}`;
+      if (filterBarangay) url += `&barangay=${filterBarangay}`;
+      if (filterType) url += `&customerType=${filterType}`;
+
+      const response = await fetch(url);
       const rawData = await response.json();
       
       const filteredData = searchPhrase 
@@ -56,7 +64,7 @@ function Customer({ onLogout }) {
 
   useEffect(() => {
     fetchCustomerRecords();
-  }, [searchPhrase, viewMode]); 
+  }, [searchPhrase, viewMode, filterBarangay, filterType]);
 
   useEffect(() => {
     fetchBarangays();
@@ -291,6 +299,35 @@ function Customer({ onLogout }) {
                   onChange={(e) => setSearchPhrase(e.target.value)}
                   style={styles.searchFieldInput}
                 />
+              </div>
+
+              {/* Barangay Filter (Filtered by Name) */}
+              <div style={styles.dropdownSelectContainer}>
+                <select 
+                  value={filterBarangay} 
+                  onChange={(e) => setFilterBarangay(e.target.value)}
+                  style={styles.nativeCustomSelect}
+                >
+                  <option value="">All Barangays</option>
+                  {uniqueBarangays.map((name, index) => (
+                    <option key={index} value={name}>{name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
+              </div>
+
+              {/* Customer Type Filter */}
+              <div style={styles.dropdownSelectContainer}>
+                <select 
+                  value={filterType} 
+                  onChange={(e) => setFilterType(e.target.value)}
+                  style={styles.nativeCustomSelect}
+                >
+                  <option value="">All Types</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Reseller">Reseller</option>
+                </select>
+                <ChevronDown size={16} color="#0077b6" style={styles.dropdownChevronOverlay} />
               </div>
             </div>
 
@@ -621,6 +658,9 @@ const styles = {
   tableBodyDataRow: { borderBottom: '1px solid #e2e8f0', height: '52px' },
   tableBodyCellBlock: { padding: '12px 10px', fontSize: '0.9rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   typeBadge: { padding: '4px 12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '700' },
+  dropdownSelectContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
+  nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
+  dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowArchiveButton: { backgroundColor: '#fef3c7', border: 'none', borderRadius: '6px', color: '#f59e0b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
