@@ -1,21 +1,25 @@
 const db = require('../config/db');
 
-// 1. Get the Customer Master List (Combines Customer, Barangay, and Contact details)
+// 1. Get the Customer Master List (Filtered by Status)
 exports.getAllCustomers = async (req, res) => {
+    const { status } = req.query;
+    const filterStatus = status || 'Active'; 
+    
     try {
         const queryText = `
             SELECT 
-                c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, 
+                c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, c.Status,
                 b.Barangay_Name, b.Purok,
                 GROUP_CONCAT(cn.Contact_Num SEPARATOR ', ') as Contact_Num
             FROM CUSTOMER c
             JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
             LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            WHERE c.Status = ?
             GROUP BY 
-                c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, 
+                c.Cust_ID, c.Barangay_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, c.Borrowed_Cont, c.Status,
                 b.Barangay_Name, b.Purok
         `;
-        const [rows] = await db.query(queryText);
+        const [rows] = await db.query(queryText, [filterStatus]);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve customer directory", details: error.message });
@@ -231,5 +235,27 @@ exports.searchCustomer = async (req, res) => {
     } catch (err) { 
         console.error("Database Search Error:", err); 
         res.status(500).json({ error: err.message }); 
+    }
+};
+
+exports.archiveCustomer = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE CUSTOMER SET Status = 'Archived' WHERE Cust_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Customer archived successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to archive customer", details: error.message });
+    }
+};
+
+exports.restoreCustomer = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE CUSTOMER SET Status = 'Active' WHERE Cust_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Customer restored successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to restore customer", details: error.message });
     }
 };

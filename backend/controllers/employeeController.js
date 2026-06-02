@@ -1,12 +1,13 @@
 const db = require('../config/db');
 
 exports.getAllEmployees = async (req, res) => {
+    const { status } = req.query;
+    const filterStatus = status || 'Active'; 
+    
     try {
-        // Added GROUP_CONCAT to bundle multiple numbers into one comma-separated string
-        // Grouped by Emp_ID to prevent duplicate employee rows in the table
         const queryText = `
             SELECT 
-                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status,
                 jr.Salary, jr.Quota, jr.Incentive_Rate,
                 GROUP_CONCAT(en.Contact_Num SEPARATOR ', ') as Contact_Num,
                 d.License_Num, d.License_Exp
@@ -14,12 +15,13 @@ exports.getAllEmployees = async (req, res) => {
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
             LEFT JOIN EMPLOYEE_NUM en ON e.Emp_ID = en.Emp_ID
             LEFT JOIN DRIVER d ON e.Emp_ID = d.Emp_ID
+            WHERE e.Status = ?
             GROUP BY 
-                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status,
                 jr.Salary, jr.Quota, jr.Incentive_Rate, 
                 d.License_Num, d.License_Exp
         `;
-        const [rows] = await db.query(queryText);
+        const [rows] = await db.query(queryText, [filterStatus]);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve employee directory", details: error.message });
@@ -223,5 +225,27 @@ exports.deleteEmployee = async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ error: "Database entity deletion failure", details: error.message });
+    }
+};
+
+exports.archiveEmployee = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE EMPLOYEE SET Status = 'Archived' WHERE Emp_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Employee archived successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to archive employee", details: error.message });
+    }
+};
+
+exports.restoreEmployee = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE EMPLOYEE SET Status = 'Active' WHERE Emp_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Employee restored successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to restore employee", details: error.message });
     }
 };

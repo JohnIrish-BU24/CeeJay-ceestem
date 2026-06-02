@@ -1,10 +1,14 @@
 const db = require('../config/db');
 
-// 1. Get all listed system operations
+// 1. Get all listed system operations (Filtered by Status)
 exports.getAllServices = async (req, res) => {
+    // Default to 'Active' if no status is requested
+    const { status } = req.query;
+    const filterStatus = status || 'Active'; 
+    
     try {
-        const queryText = 'SELECT * FROM SERVICE_DETAIL ORDER BY Serv_ID ASC';
-        const [rows] = await db.query(queryText);
+        const queryText = 'SELECT * FROM SERVICE_DETAIL WHERE Status = ? ORDER BY Serv_ID ASC';
+        const [rows] = await db.query(queryText, [filterStatus]);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve the listed system amenities", details: error.message });
@@ -61,5 +65,27 @@ exports.deleteService = async (req, res) => {
             return res.status(400).json({ error: "This operation cannot be safely extracted because previous client context manifests depend directly on its properties." });
         }
         res.status(500).json({ error: "Extraction procedure pipeline dropped", details: error.message });
+    }
+};
+
+exports.archiveService = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE SERVICE_DETAIL SET Status = 'Archived' WHERE Serv_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Service archived successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to archive service", details: error.message });
+    }
+};
+
+exports.restoreService = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE SERVICE_DETAIL SET Status = 'Active' WHERE Serv_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Service restored successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to restore service", details: error.message });
     }
 };

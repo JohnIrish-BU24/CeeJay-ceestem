@@ -1,9 +1,12 @@
 const db = require('../config/db');
 
-// Get all registered Barangays
+// Get all registered Barangays (Filtered by Status)
 exports.getAllBarangays = async (req, res) => {
+    const { status } = req.query;
+    const filterStatus = status || 'Active'; 
+    
     try {
-        const [rows] = await db.query('SELECT * FROM BARANGAY');
+        const [rows] = await db.query('SELECT * FROM BARANGAY WHERE Status = ?', [filterStatus]);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve barangays", details: error.message });
@@ -61,5 +64,27 @@ exports.deleteBarangay = async (req, res) => {
             return res.status(400).json({ error: "Cannot delete this barangay because customers are currently assigned to it." });
         }
         res.status(500).json({ error: "Failed to delete", details: error.message });
+    }
+};
+
+exports.archiveBarangay = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE BARANGAY SET Status = 'Archived' WHERE Barangay_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Barangay archived successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to archive barangay", details: error.message });
+    }
+};
+
+exports.restoreBarangay = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const queryText = "UPDATE BARANGAY SET Status = 'Active' WHERE Barangay_ID = ?";
+        await db.query(queryText, [id]);
+        res.json({ message: "Barangay restored successfully" });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to restore barangay", details: error.message });
     }
 };

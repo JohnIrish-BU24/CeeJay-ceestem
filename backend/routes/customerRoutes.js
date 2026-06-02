@@ -9,4 +9,8 @@ router.put('/:id', customerController.updateCustomer);
 router.delete('/:id', customerController.deleteCustomer);
 router.get('/search', customerController.searchCustomer);
 
+// Add archive and restore routes
+router.put('/:id/archive', customerController.archiveCustomer);
+router.put('/:id/restore', customerController.restoreCustomer);
+
 module.exports = router;

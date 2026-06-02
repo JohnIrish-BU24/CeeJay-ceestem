@@ -201,6 +201,15 @@ function Customer({ onLogout }) {
     fetchCustomerRecords();
   };
 
+  const handleBatchRestore = async () => {
+    if (!window.confirm(`Restore ${selectedCustomerIdentifiers.length} customers?`)) return;
+    for (const id of selectedCustomerIdentifiers) {
+      await fetch(`http://localhost:5000/api/customer/${id}/restore`, { method: 'PUT' });
+    }
+    setSelectedCustomerIdentifiers([]);
+    fetchCustomerRecords();
+  };
+
   const handleToggleAllSelection = (e) => {
     if (e.target.checked) setSelectedCustomerIdentifiers(customerDataList.map(c => c.Cust_ID));
     else setSelectedCustomerIdentifiers([]);
@@ -301,11 +310,17 @@ function Customer({ onLogout }) {
             </div>
           </div>
 
-          {selectedCustomerIdentifiers.length > 0 && viewMode === 'Active' && (
+          {selectedCustomerIdentifiers.length > 0 && (
             <div style={styles.batchActionAlertStrip}>
               <span style={styles.batchSelectionCountLabel}>{selectedCustomerIdentifiers.length} Selected</span>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleBatchArchive} style={styles.batchDeleteActionButton}>Archive Selected</button>
+                
+                {viewMode === 'Active' ? (
+                  <button onClick={handleBatchArchive} style={styles.batchDeleteActionButton}>Archive Selected</button>
+                ) : (
+                  <button onClick={handleBatchRestore} style={{...styles.batchDeleteActionButton, backgroundColor: '#16a34a'}}>Restore Selected</button>
+                )}
+                
                 <button onClick={() => setSelectedCustomerIdentifiers([])} style={styles.batchCancelActionButton}>Cancel</button>
               </div>
             </div>
@@ -315,12 +330,10 @@ function Customer({ onLogout }) {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
-                  {viewMode === 'Active' && (
-                    <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
-                      <input type="checkbox" onChange={handleToggleAllSelection} checked={selectedCustomerIdentifiers.length === customerDataList.length && customerDataList.length > 0} className="custom-checkbox" />
-                    </th>
-                  )}
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px', paddingLeft: viewMode === 'Archived' ? '20px' : '0' }}>ID</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
+                    <input type="checkbox" onChange={handleToggleAllSelection} checked={selectedCustomerIdentifiers.length === customerDataList.length && customerDataList.length > 0} className="custom-checkbox" />
+                  </th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>FIRST NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>LAST NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '150px' }}>BARANGAY</th>
@@ -333,12 +346,11 @@ function Customer({ onLogout }) {
               <tbody>
                 {customerDataList.map((cust) => (
                   <tr key={cust.Cust_ID} style={styles.tableBodyDataRow}>
-                    {viewMode === 'Active' && (
-                      <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
-                        <input type="checkbox" checked={selectedCustomerIdentifiers.includes(cust.Cust_ID)} onChange={() => handleToggleSingleSelection(cust.Cust_ID)} className="custom-checkbox" />
-                      </td>
-                    )}
-                    <td style={{...styles.tableBodyCellBlock, paddingLeft: viewMode === 'Archived' ? '20px' : '0'}}><strong>{cust.Cust_ID}</strong></td>
+                    <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
+                      <input type="checkbox" checked={selectedCustomerIdentifiers.includes(cust.Cust_ID)} onChange={() => handleToggleSingleSelection(cust.Cust_ID)} className="custom-checkbox" />
+                    </td>
+
+                    <td style={styles.tableBodyCellBlock}><strong>{cust.Cust_ID}</strong></td>
                     <td style={styles.tableBodyCellBlock}>{cust.Cust_FName}</td>
                     <td style={styles.tableBodyCellBlock}>{cust.Cust_LName}</td>
                     <td style={styles.tableBodyCellBlock}>{cust.Barangay_Name} (P{cust.Purok})</td>

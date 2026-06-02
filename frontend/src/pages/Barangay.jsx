@@ -114,6 +114,15 @@ function Barangay({ onLogout }) {
     fetchBarangayRecords();
   };
 
+  const handleBatchRestore = async () => {
+    if (!window.confirm(`Restore ${selectedBarangayIdentifiers.length} barangays?`)) return;
+    for (const id of selectedBarangayIdentifiers) {
+      await fetch(`http://localhost:5000/api/barangay/${id}/restore`, { method: 'PUT' });
+    }
+    setSelectedBarangayIdentifiers([]);
+    fetchBarangayRecords();
+  };
+
   const handleToggleAllSelection = (e) => {
     if (e.target.checked) setSelectedBarangayIdentifiers(barangayDataList.map(b => b.Barangay_ID));
     else setSelectedBarangayIdentifiers([]);
@@ -213,11 +222,15 @@ function Barangay({ onLogout }) {
             </div>
           </div>
 
-          {selectedBarangayIdentifiers.length > 0 && viewMode === 'Active' && (
+          {selectedBarangayIdentifiers.length > 0 && (
             <div style={styles.batchActionAlertStrip}>
               <span style={styles.batchSelectionCountLabel}>{selectedBarangayIdentifiers.length} Selected</span>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleBatchArchive} style={styles.batchDeleteActionButton}>Archive Selected</button>
+                {viewMode === 'Active' ? (
+                  <button onClick={handleBatchArchive} style={styles.batchDeleteActionButton}>Archive Selected</button>
+                ) : (
+                  <button onClick={handleBatchRestore} style={{...styles.batchDeleteActionButton, backgroundColor: '#16a34a'}}>Restore Selected</button>
+                )}
                 <button onClick={() => setSelectedBarangayIdentifiers([])} style={styles.batchCancelActionButton}>Cancel</button>
               </div>
             </div>
@@ -227,16 +240,14 @@ function Barangay({ onLogout }) {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
-                  {viewMode === 'Active' && (
-                    <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
-                      <input 
-                        type="checkbox" 
-                        onChange={handleToggleAllSelection}
-                        checked={selectedBarangayIdentifiers.length === barangayDataList.length && barangayDataList.length > 0}
-                      />
-                    </th>
-                  )}
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '120px', paddingLeft: viewMode === 'Archived' ? '20px' : '0' }}>BARANGAY ID</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={handleToggleAllSelection}
+                      checked={selectedBarangayIdentifiers.length === barangayDataList.length && barangayDataList.length > 0}
+                    />
+                  </th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>BARANGAY ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '300px' }}>BARANGAY NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>PUROK</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '150px' }}>ACTIONS</th>
@@ -245,16 +256,14 @@ function Barangay({ onLogout }) {
               <tbody>
                 {barangayDataList.map((barangay) => (
                   <tr key={barangay.Barangay_ID} style={styles.tableBodyDataRow}>
-                    {viewMode === 'Active' && (
-                      <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={selectedBarangayIdentifiers.includes(barangay.Barangay_ID)}
-                          onChange={() => handleToggleSingleSelection(barangay.Barangay_ID)}
-                        />
-                      </td>
-                    )}
-                    <td style={{...styles.tableBodyCellBlock, paddingLeft: viewMode === 'Archived' ? '20px' : '0'}}><strong>{barangay.Barangay_ID}</strong></td>
+                    <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedBarangayIdentifiers.includes(barangay.Barangay_ID)}
+                        onChange={() => handleToggleSingleSelection(barangay.Barangay_ID)}
+                      />
+                    </td>
+                    <td style={styles.tableBodyCellBlock}><strong>{barangay.Barangay_ID}</strong></td>
                     <td style={styles.tableBodyCellBlock}>{barangay.Barangay_Name}</td>
                     <td style={styles.tableBodyCellBlock}>{barangay.Purok}</td>
                     <td style={styles.tableBodyCellBlock}>
@@ -278,7 +287,7 @@ function Barangay({ onLogout }) {
                   </tr>
                 ))}
                 {barangayDataList.length === 0 && (
-                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '20px', color: '#64748b'}}>No barangays found.</td></tr>
+                  <tr><td colSpan="5" style={{textAlign: 'center', padding: '40px', color: '#64748b'}}>No barangays found.</td></tr>
                 )}
               </tbody>
             </table>
@@ -439,20 +448,24 @@ const styles = {
   searchFieldInput: { width: '100%', padding: '12px 16px 12px 46px', borderRadius: '8px', border: '1px solid #bde0fe', backgroundColor: '#eaf4fc', color: '#012a4a', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' },
   archiveToggleBtn: { border: '1px solid #cbd5e1', color: '#475569', borderRadius: '8px', padding: '12px 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
   addPrimaryActionButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.2)' },
+  
   batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
   batchSelectionCountLabel: { color: '#b45309', fontWeight: '700', fontSize: '0.95rem' },
   batchDeleteActionButton: { backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' },
   batchCancelActionButton: { backgroundColor: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer' },
-  ledgerTableMarkup: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' },
+  
+  scrollableTableContainer: { overflow: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'block', minHeight: 0, flex: 1 },
+  ledgerTableMarkup: { width: '100%', minWidth: '1000px', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' },
   tableHeadBorderRow: { borderBottom: '2px solid #bde0fe' },
-  scrollableTableContainer: { overflowY: 'auto', border: '1px solid #e2e8f0', borderRadius: '8px', display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 },
   tableHeaderColumnCell: { padding: '14px 10px', fontSize: '0.85rem', fontWeight: '800', color: '#64748b', letterSpacing: '0.5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', position: 'sticky', top: 0, backgroundColor: '#ffffff', zIndex: 10, borderBottom: '2px solid #bde0fe' },
   tableBodyDataRow: { borderBottom: '1px solid #e2e8f0', height: '52px' },
   tableBodyCellBlock: { padding: '12px 10px', fontSize: '0.9rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
+  
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowArchiveButton: { backgroundColor: '#fef3c7', border: 'none', borderRadius: '6px', color: '#f59e0b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowRestoreButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' },
+  
   modalOverlayMask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modalWindowContainer: { backgroundColor: '#ffffff', width: '90%', maxWidth: '450px', borderRadius: '12px', border: '1px solid #0077b6', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
   modalHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', width: '100%' },
