@@ -1,7 +1,7 @@
-import CeeStemLogo from '../assets/CeeStem.png';
+import CeeStemLogo from '../assets/CeesTem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Activity, Clock, Droplet, ArrowRight, FileText, CheckCircle, Truck, Users, Link, History, Wallet, UserCheck, PieChart, TrendingUp, Package } from 'lucide-react';
+import { Activity, Clock, Droplet, ArrowRight, FileText, CheckCircle, Truck, Users, Link, History, Wallet, UserCheck, PieChart, TrendingUp, Package, LogOut } from 'lucide-react';
 
 function OwnerDashboard({ onLogout }) {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ function OwnerDashboard({ onLogout }) {
           const staffTally = {};
           
           const unpaidList = [];
-          const hourlyData = {}; // 📍 Tracks data for the graph
+          const hourlyData = {};
 
           todayTx.forEach(tx => {
             const price = parseFloat(tx.Selling_Price || 0);
@@ -86,7 +86,7 @@ function OwnerDashboard({ onLogout }) {
               staffTally[tx.Driver].value += price;
             }
 
-            // 📍 4. Build Graph Data
+            // 4. Build Graph Data
             if (tx.Trans_Date) {
               const hour = new Date(tx.Trans_Date).getHours();
               hourlyData[hour] = (hourlyData[hour] || 0) + price;
@@ -95,7 +95,7 @@ function OwnerDashboard({ onLogout }) {
 
           const sortedStaff = Object.values(staffTally).sort((a, b) => b.count - a.count);
 
-          // 📍 5. Format Hourly Data (7 AM to 6 PM)
+          // 5. Format Hourly Data (7 AM to 6 PM)
           const formattedHourly = [];
           for (let i = 7; i <= 18; i++) {
             const ampm = i >= 12 ? 'PM' : 'AM';
@@ -111,7 +111,7 @@ function OwnerDashboard({ onLogout }) {
             recentTransactions: todayTx.slice(0, 6),
             unpaidTransactions: unpaidList.slice(0, 5),
             employeeStats: sortedStaff,
-            hourlySales: formattedHourly // 📍 Save graph data
+            hourlySales: formattedHourly
           });
         }
       } catch (err) {
@@ -123,6 +123,13 @@ function OwnerDashboard({ onLogout }) {
 
     fetchDashboardData();
   }, []);
+
+  const handleLogout = () => {
+    if (onLogout) onLogout();
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('activeEmployee');
+    window.location.href = '/login'; 
+  };
 
   const handleRibbonNavigation = (menuName) => {
     const routes = {
@@ -202,6 +209,11 @@ function OwnerDashboard({ onLogout }) {
               </button>
             );
           })}
+          
+          <div style={styles.navDivider}></div>
+          <button onClick={handleLogout} style={styles.signOutButton}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </nav>
 
@@ -337,8 +349,8 @@ function OwnerDashboard({ onLogout }) {
                         <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '1.15rem' }}>
                           ₱{parseFloat(tx.Selling_Price || 0).toFixed(2)}
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', color: tx.Remarks === 'Paid' ? '#10b981' : '#ef4444', fontSize: '0.8rem', fontWeight: '700', marginTop: '2px' }}>
-                          {tx.Remarks === 'Paid' ? <CheckCircle size={14} /> : <Clock size={14} />}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', color: tx.Remarks?.toLowerCase() === 'paid' ? '#10b981' : '#ef4444', fontSize: '0.8rem', fontWeight: '700', marginTop: '2px' }}>
+                          {tx.Remarks?.toLowerCase() === 'paid' ? <CheckCircle size={14} /> : <Clock size={14} />}
                           {tx.Remarks}
                         </div>
                       </div>
@@ -419,7 +431,6 @@ function OwnerDashboard({ onLogout }) {
                 </div>
               )}
             </div>
-
 
             {/* Widget 2: Detailed Employee Output (Incentive Tracker) */}
             <div style={{ background: '#ffffff', borderRadius: '16px', border: '1px solid #eaf4fb', padding: '28px', boxShadow: '0 4px 16px rgba(16, 42, 67, 0.04)' }}>
@@ -562,7 +573,7 @@ function OwnerDashboard({ onLogout }) {
 }
 
 const styles = {
-  brandLogo: { width: '44px', height: '44px', objectFit: 'contain' },
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#dceef8', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
@@ -572,6 +583,8 @@ const styles = {
   brandSubTitle: { color: '#00b4d8', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '1px' },
   navMenuLinksRow: { display: 'flex', height: '100%', alignItems: 'center', gap: '4px' },
   navMenuButton: { background: 'none', border: 'none', height: '100%', padding: '0 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease' },
+  navDivider: { width: '2px', height: '24px', backgroundColor: '#00b4d8', margin: '0 10px', opacity: 0.5 },
+  signOutButton: { backgroundColor: '#ef4444', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' },
   workspaceBodyWrapper: { flex: 1, overflowY: 'auto', padding: '36px 0', boxSizing: 'border-box', width: '100%' },
   quickLinkBtn: { display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', background: '#f8fafc', border: '1px solid #f1f5f9', borderRadius: '12px', cursor: 'pointer', transition: 'all 0.2s', width: '100%', textAlign: 'left' },
   quickLinkIcon: { background: '#ffffff', padding: '10px', borderRadius: '10px', boxShadow: '0 2px 6px rgba(0,0,0,0.04)', color: '#0284c7', display: 'flex' }

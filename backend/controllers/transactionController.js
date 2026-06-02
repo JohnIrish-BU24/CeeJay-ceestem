@@ -252,7 +252,10 @@ exports.getTodayTransactions = async (req, res) => {
             JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
             JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
             JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
-            WHERE DATE(tr.Trans_Date) = CURDATE() AND tr.Status = 'Valid'
+            -- Modified to fetch the latest available date instead of strictly CURDATE()
+            WHERE DATE(tr.Trans_Date) = (
+                SELECT MAX(DATE(Trans_Date)) FROM TRANS_RECORD WHERE Status = 'Valid'
+            ) AND tr.Status = 'Valid'
             GROUP BY 
                 tr.Trans_ID, tr.Trans_Date, tr.Remarks, tr.Status,
                 c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, 

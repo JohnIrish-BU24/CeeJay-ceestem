@@ -1028,7 +1028,7 @@ function Employees() {
 }
 
 const styles = {
-  brandLogo: { width: '44px', height: '44px', objectFit: 'contain' },
+  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#dceef8', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
