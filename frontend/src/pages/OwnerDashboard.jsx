@@ -40,7 +40,19 @@ function OwnerDashboard({ onLogout }) {
       try {
         const res = await fetch('http://localhost:5000/api/transaction/today');
         if (res.ok) {
-          const todayTx = await res.json();
+          const rawTx = await res.json();
+          
+          if (!rawTx || rawTx.length === 0) {
+            setLoading(false);
+            return;
+          }
+
+          // STRICT DATE FILTER: Find the most recent date to act as "Today"
+          const maxTime = Math.max(...rawTx.map(tx => new Date(tx.Trans_Date).getTime()));
+          const latestDateString = new Date(maxTime).toDateString();
+          
+          // Filter out historical records (past unpaid balances) to prevent inflated sales/debts
+          const todayTx = rawTx.filter(tx => new Date(tx.Trans_Date).toDateString() === latestDateString);
           
           let tSales = 0, dSales = 0, wSales = 0;
           let tQty = 0, dQty = 0, wQty = 0;
@@ -73,7 +85,7 @@ function OwnerDashboard({ onLogout }) {
                 wQty += transactionQuantity; 
             }
 
-            // 2. Unpaid Debts
+            // 2. Unpaid Debts (Strictly from Today)
             if (isUnpaid) {
               uCount++;
               uValue += totalTransactionValue;
@@ -117,7 +129,7 @@ function OwnerDashboard({ onLogout }) {
             unpaidCount: uCount, unpaidValue: uValue,
             activeDrivers: drivers.size, activeRefillers: refillers.size,
             recentTransactions: todayTx.slice(0, 6),
-            unpaidTransactions: unpaidList.slice(0, 5),
+            unpaidTransactions: unpaidList,
             employeeStats: sortedStaff,
             hourlySales: formattedHourly
           });
@@ -233,7 +245,7 @@ function OwnerDashboard({ onLogout }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
             <div>
               <h1 style={{ fontSize: '1.9rem', color: '#012a4a', margin: '0 0 8px 0', fontWeight: '800', letterSpacing: '-0.5px' }}>
-                Welcome back!
+                Welcome back, Owner
               </h1>
               <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem' }}>
                 Here is a detailed snapshot of your refilling station today.
@@ -456,7 +468,7 @@ function OwnerDashboard({ onLogout }) {
               ) : metrics.employeeStats.length === 0 ? (
                 <div style={{ color: '#94a3b8', fontSize: '0.9rem' }}>No employee output recorded yet today.</div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', maxHeight: '220px', overflowY: 'auto', paddingRight: '8px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', height: '240px', overflowY: 'auto', paddingRight: '8px' }}>
                   {metrics.employeeStats.map((staff, idx) => (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -505,7 +517,7 @@ function OwnerDashboard({ onLogout }) {
                   All accounts settled for today!
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '240px', overflowY: 'auto', paddingRight: '8px' }}>
                   {metrics.unpaidTransactions.map((tx, idx) => (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef2f2', border: '1px solid #fee2e2', padding: '12px 16px', borderRadius: '10px' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
