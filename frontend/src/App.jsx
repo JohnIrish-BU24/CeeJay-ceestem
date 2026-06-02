@@ -13,60 +13,67 @@ import OwnerDashboard from './pages/OwnerDashboard';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [userRole, setUserRole] = useState(null); // Track if owner or employee
+  const [userRole, setUserRole] = useState(null); 
 
+  // Make this async to handle the backend fetch request
   const handleLoginVerify = async (username, password, userType) => {
-    if (userType === 'owner') {
-      // Owner login stays hardcoded as requested
-      if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
-        setIsAuthenticated(true);
-        setUserRole('owner');
-        localStorage.setItem('userRole', 'owner');
-        return { success: true };
-      } else {
-        return { success: false, message: "Invalid owner credentials." };
-      }
-    } 
-    
-    else if (userType === 'employee') {
+      if (userType === 'owner') {
+        if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
+          setIsAuthenticated(true);
+          setUserRole('owner');
+          localStorage.setItem('userRole', 'owner'); 
+          return { success: true };
+        }
+        return { success: false, message: "Invalid Owner credentials!" };
+      } 
+      
+      // ==========================================
+      // REAL BACKEND AUTHENTICATION LOGIC
+      // ==========================================
       try {
-        // 📍 NEW: Actually call the CeeStem backend API!
         const response = await fetch('http://localhost:5000/api/employee/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify({ username, password })
         });
-
+        
         const data = await response.json();
 
         if (response.ok && data.success) {
+          // data.employeeData is returned from your backend controller
+          const loggedInUser = {
+            id: data.employeeData.Emp_ID,
+            role: data.employeeData.Role_ID // Captures 'R' or 'D' directly from the DB
+          };
+          
+          // Save the specific employee ID and role for the database
+          localStorage.setItem('activeEmployee', JSON.stringify(loggedInUser));
+          
+          // Save the generic user type so protected routes work correctly
+          localStorage.setItem('userRole', 'employee'); 
+
           setIsAuthenticated(true);
           setUserRole('employee');
-          localStorage.setItem('userRole', 'employee');
-          // Optional: Store the specific employee data if your dashboard needs it
-          localStorage.setItem('activeEmployee', JSON.stringify(data.employeeData));
-          
           return { success: true };
         } else {
-          // This will display the "Account restricted" or "Invalid Password" message from the backend
-          return { success: false, message: data.message || "Login failed." };
+          // Displays the custom backend error (e.g., "Account restricted...")
+          return { success: false, message: data.message || "Invalid Employee ID or Password!" };
         }
       } catch (error) {
-        console.error("Login fetch error:", error);
+        console.error("Backend login error:", error);
         return { success: false, message: "Server connection failed. Is the backend running?" };
       }
-    }
-  };
+    };
 
   return (
     <Router>
       <Routes>
-        {/* 1. Dynamic Root Route: Send owners to Dashboard, employees to their dashboard */}
         <Route 
           path="/" 
           element={ 
             isAuthenticated ? (
-              // 📍 CHANGED: Now redirects Owner to /dashboard
               userRole === 'owner' ? <Navigate to="/dashboard" replace /> : <Navigate to="/employee" replace />
             ) : (
               <Login onLoginVerify={handleLoginVerify} /> 
@@ -75,7 +82,6 @@ function App() {
         />
         <Route path="/login" element={<Navigate to="/" replace />} />
 
-        {/* 📍 ADDED: The new Protected Dashboard Route for Owners */}
         <Route 
           path="/dashboard" 
           element={

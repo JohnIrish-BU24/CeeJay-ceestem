@@ -265,8 +265,8 @@ function Payroll() {
                     <td style={{...styles.tableBodyCellBlock, textAlign: 'left'}}>
                         <span style={{ 
                           ...styles.typeBadge, 
-                          backgroundColor: record.Role_ID === 'D' ? '#e0e7ff' : '#fce7f3',
-                          color: record.Role_ID === 'D' ? '#3730a3' : '#9d174d'
+                          backgroundColor: record.Role_ID === 'D' ? '#f3e8ff' : '#e0f2fe',
+                          color: record.Role_ID === 'D' ? '#581c87' : '#0369a1'
                         }}>
                           {record.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                         </span>
