@@ -54,21 +54,29 @@ function OwnerDashboard({ onLogout }) {
           const hourlyData = {};
 
           todayTx.forEach(tx => {
-            const price = parseFloat(tx.Selling_Price || 0);
-            const qty = parseInt(tx.Quantity || 0);
+            // Apply descriptive variable names and multiply unit price by quantity
+            const transactionUnitPrice = parseFloat(tx.Selling_Price || 0);
+            const transactionQuantity = parseInt(tx.Quantity || 0);
+            const totalTransactionValue = transactionUnitPrice * transactionQuantity;
+            
             const isDelivery = tx.Serv_Name?.toLowerCase() === 'delivery';
             const isUnpaid = tx.Remarks?.toLowerCase() === 'unpaid';
 
             // 1. Sales & Quantity
-            tSales += price;
-            tQty += qty;
-            if (isDelivery) { dSales += price; dQty += qty; } 
-            else { wSales += price; wQty += qty; }
+            tSales += totalTransactionValue;
+            tQty += transactionQuantity;
+            if (isDelivery) { 
+                dSales += totalTransactionValue; 
+                dQty += transactionQuantity; 
+            } else { 
+                wSales += totalTransactionValue; 
+                wQty += transactionQuantity; 
+            }
 
             // 2. Unpaid Debts
             if (isUnpaid) {
               uCount++;
-              uValue += price;
+              uValue += totalTransactionValue;
               unpaidList.push(tx);
             }
 
@@ -76,20 +84,20 @@ function OwnerDashboard({ onLogout }) {
             if (tx.Refiller && tx.Refiller !== '—') {
               refillers.add(tx.Refiller);
               if (!staffTally[tx.Refiller]) staffTally[tx.Refiller] = { name: tx.Refiller, role: 'Refiller', count: 0, value: 0 };
-              staffTally[tx.Refiller].count += qty;
-              staffTally[tx.Refiller].value += price;
+              staffTally[tx.Refiller].count += transactionQuantity;
+              staffTally[tx.Refiller].value += totalTransactionValue;
             }
             if (tx.Driver && tx.Driver !== '—') {
               drivers.add(tx.Driver);
               if (!staffTally[tx.Driver]) staffTally[tx.Driver] = { name: tx.Driver, role: 'Driver', count: 0, value: 0 };
-              staffTally[tx.Driver].count += qty;
-              staffTally[tx.Driver].value += price;
+              staffTally[tx.Driver].count += transactionQuantity;
+              staffTally[tx.Driver].value += totalTransactionValue;
             }
 
             // 4. Build Graph Data
             if (tx.Trans_Date) {
               const hour = new Date(tx.Trans_Date).getHours();
-              hourlyData[hour] = (hourlyData[hour] || 0) + price;
+              hourlyData[hour] = (hourlyData[hour] || 0) + totalTransactionValue;
             }
           });
 
@@ -347,7 +355,7 @@ function OwnerDashboard({ onLogout }) {
                       </div>
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '1.15rem' }}>
-                          ₱{parseFloat(tx.Selling_Price || 0).toFixed(2)}
+                          ₱{(parseFloat(tx.Selling_Price || 0) * parseInt(tx.Quantity || 0)).toFixed(2)}
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px', justifyContent: 'flex-end', color: tx.Remarks?.toLowerCase() === 'paid' ? '#10b981' : '#ef4444', fontSize: '0.8rem', fontWeight: '700', marginTop: '2px' }}>
                           {tx.Remarks?.toLowerCase() === 'paid' ? <CheckCircle size={14} /> : <Clock size={14} />}
@@ -509,7 +517,7 @@ function OwnerDashboard({ onLogout }) {
                         </div>
                       </div>
                       <div style={{ fontSize: '1.1rem', color: '#ef4444', fontWeight: '800' }}>
-                        ₱{parseFloat(tx.Selling_Price || 0).toFixed(2)}
+                        ₱{(parseFloat(tx.Selling_Price || 0) * parseInt(tx.Quantity || 0)).toFixed(2)}
                       </div>
                     </div>
                   ))}
