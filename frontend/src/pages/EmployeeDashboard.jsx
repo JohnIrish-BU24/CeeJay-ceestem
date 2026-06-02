@@ -1223,10 +1223,10 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
 
   // ── Delete transaction ──
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this transaction?')) return;
+    if (!window.confirm('Move this transaction to the Trash Bin?')) return;
     try {
-      const res = await fetch(`${API_BASE}/transaction/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete');
+      const res = await fetch(`${API_BASE}/transaction/${id}/archive`, { method: 'PUT' });
+      if (!res.ok) throw new Error('Failed to update status');
       setTransactions(prev => prev.filter(t => t.Trans_ID !== id));
     } catch (err) {
       alert(err.message);
