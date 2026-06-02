@@ -13,6 +13,7 @@ router.put('/roles/:id', employeeController.updateRole);
 router.post('/', employeeController.createEmployee);
 router.post('/login', employeeController.loginEmployee);
 router.put('/:id', employeeController.updateEmployee);
+router.put('/:id/password', employeeController.updateEmployeePassword);
 router.delete('/:id', employeeController.deleteEmployee);
 
 module.exports = router;

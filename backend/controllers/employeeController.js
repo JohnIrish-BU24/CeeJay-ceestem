@@ -1,14 +1,11 @@
 const db = require('../config/db');
+const demoPasswords = {};
 
 exports.getAllEmployees = async (req, res) => {
-    // 1. Extract the status from the URL query, defaulting to 'Active'
-    const { status } = req.query;
-    const filterStatus = status || 'Active';
-
     try {
         const queryText = `
             SELECT 
-                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status, 
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
                 jr.Salary, jr.Quota, jr.Incentive_Rate,
                 GROUP_CONCAT(en.Contact_Num SEPARATOR ', ') as Contact_Num,
                 d.License_Num, d.License_Exp
@@ -16,16 +13,22 @@ exports.getAllEmployees = async (req, res) => {
             JOIN JOB_ROLE jr ON e.Role_ID = jr.Role_ID
             LEFT JOIN EMPLOYEE_NUM en ON e.Emp_ID = en.Emp_ID
             LEFT JOIN DRIVER d ON e.Emp_ID = d.Emp_ID
-            WHERE e.Status = ? -- 2. Filter by the requested status here
             GROUP BY 
-                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, e.Status,
+                e.Emp_ID, e.Emp_LName, e.Emp_FName, e.Role_ID, 
                 jr.Salary, jr.Quota, jr.Incentive_Rate, 
                 d.License_Num, d.License_Exp
         `;
+        const [rows] = await db.query(queryText);
         
-        // 3. Pass the filterStatus into the query
-        const [rows] = await db.query(queryText, [filterStatus]);
-        res.json(rows);
+        // 📍 NEW ADDITION: Inject the temporary passwords into the results
+        const rowsWithPasswords = rows.map(emp => ({
+            ...emp,
+            // Attach the saved password, or leave empty if not set
+            Password: demoPasswords[emp.Emp_ID] || null 
+        }));
+
+        // Send the modified rows to the frontend
+        res.json(rowsWithPasswords);
     } catch (error) {
         res.status(500).json({ error: "Failed to retrieve employee directory", details: error.message });
     }
@@ -41,7 +44,7 @@ exports.getRoles = async (req, res) => {
 };
 
 exports.createEmployee = async (req, res) => {
-    const { Emp_ID, Role_ID, Emp_LName, Emp_FName, Contact_Num, License_Num, License_Exp } = req.body;
+    const { Emp_ID, Role_ID, Emp_LName, Emp_FName, Contact_Num, License_Num, License_Exp, Password } = req.body;
 
     if (!Emp_ID || !Role_ID || !Emp_LName || !Emp_FName) {
         return res.status(400).json({ error: "Missing required core employee fields." });
@@ -78,6 +81,10 @@ exports.createEmployee = async (req, res) => {
                 }
             }
 
+            if (Password) {
+                demoPasswords[Emp_ID] = Password;
+            }
+
             await connection.commit();
             res.status(201).json({ message: "Employee profile successfully initialized!" });
         } catch (error) {
@@ -94,14 +101,34 @@ exports.createEmployee = async (req, res) => {
 exports.loginEmployee = async (req, res) => {
     const { username, password } = req.body;
     try {
+        // Query database for matching Emp_ID only
         const [rows] = await db.query(
-            'SELECT Emp_ID, Role_ID FROM EMPLOYEE WHERE Emp_ID = ? AND Password = ?', 
-            [username, password]
+            'SELECT Emp_ID, Role_ID FROM EMPLOYEE WHERE Emp_ID = ?', 
+            [username]
         );
+        
         if (rows.length > 0) {
-            res.json({ success: true, role: 'employee', employeeData: rows[0] });
+            const emp = rows[0];
+            
+            // 📍 FIX: Use emp.Emp_ID (database casing) instead of username (user input casing)
+            const storedPassword = demoPasswords[emp.Emp_ID];
+            
+            // If the password isn't in our dictionary, restrict access entirely
+            if (!storedPassword) {
+                return res.status(401).json({ 
+                    success: false, 
+                    message: "Account restricted: No password has been set. Please contact the owner." 
+                });
+            }
+
+            // Verify if the password matches
+            if (storedPassword === password) {
+                res.json({ success: true, role: 'employee', employeeData: emp });
+            } else {
+                res.status(401).json({ success: false, message: "Invalid Password" });
+            }
         } else {
-            res.status(401).json({ success: false, message: "Invalid ID or Password" });
+            res.status(401).json({ success: false, message: "Invalid ID" });
         }
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -227,4 +254,18 @@ exports.updateRole = async (req, res) => {
         console.error("Error updating job role:", error);
         res.status(500).json({ error: "Failed to update job role" });
     }
+};
+
+exports.updateEmployeePassword = async (req, res) => {
+    const { id } = req.params;
+    const { Password } = req.body;
+    
+    if (!Password) {
+        return res.status(400).json({ error: "Password cannot be empty" });
+    }
+    
+    // Update the password in our temporary memory dictionary
+    demoPasswords[id] = Password;
+    
+    res.status(200).json({ message: "Password updated successfully for the demo!" });
 };

@@ -10,56 +10,52 @@ import Employees from './pages/Employees';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 
-const employeeCredentials = [
-  { id: 'R1', password: 'ref1', role: 'refiller' },
-  { id: 'R2', password: 'ref2', role: 'refiller' },
-  { id: 'D1', password: 'dri1', role: 'driver' },
-  { id: 'D2', password: 'dri2', role: 'driver' }
-];
-
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState(null); // Track if owner or employee
 
-  const handleLoginVerify = (username, password, userType) => {
-      if (userType === 'owner') {
-        if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
-          setIsAuthenticated(true);
-          setUserRole('owner');
-          // Optional: Save owner role to localStorage so they don't get logged out on refresh
-          localStorage.setItem('userRole', 'owner'); 
-          return { success: true };
-        }
-        return { success: false, message: "Invalid Owner credentials!" };
-      } 
-      
-      // Employee logic
-      const foundEmployee = employeeCredentials.find(
-        (emp) => emp.id === username && emp.password === password
-      );
-
-      if (foundEmployee) {
-        // ==========================================
-        // LOCALSTORAGE SAVING LOGIC
-        // ==========================================
-        const loggedInUser = {
-          id: foundEmployee.id,
-          role: foundEmployee.role === 'refiller' ? 'R' : 'D' 
-        };
-        
-        // Save the specific employee ID and role for the database
-        localStorage.setItem('activeEmployee', JSON.stringify(loggedInUser));
-        
-        // Save the generic user type so your protected routes work correctly!
-        localStorage.setItem('userRole', 'employee'); 
-        // ==========================================
-
+  const handleLoginVerify = async (username, password, userType) => {
+    if (userType === 'owner') {
+      // Owner login stays hardcoded as requested
+      if (username === 'ceestem@gmail.com' && password === 'ceestem123') {
         setIsAuthenticated(true);
-        setUserRole('employee');
+        setUserRole('owner');
+        localStorage.setItem('userRole', 'owner');
         return { success: true };
+      } else {
+        return { success: false, message: "Invalid owner credentials." };
       }
-      return { success: false, message: "Invalid Employee ID or Password!" };
-    };
+    } 
+    
+    else if (userType === 'employee') {
+      try {
+        // 📍 NEW: Actually call the CeeStem backend API!
+        const response = await fetch('http://localhost:5000/api/employee/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          setIsAuthenticated(true);
+          setUserRole('employee');
+          localStorage.setItem('userRole', 'employee');
+          // Optional: Store the specific employee data if your dashboard needs it
+          localStorage.setItem('activeEmployee', JSON.stringify(data.employeeData));
+          
+          return { success: true };
+        } else {
+          // This will display the "Account restricted" or "Invalid Password" message from the backend
+          return { success: false, message: data.message || "Login failed." };
+        }
+      } catch (error) {
+        console.error("Login fetch error:", error);
+        return { success: false, message: "Server connection failed. Is the backend running?" };
+      }
+    }
+  };
 
   return (
     <Router>
