@@ -7,6 +7,7 @@ import Customer from './pages/Customer';
 import Services from './pages/Services'; 
 import EmployeeDashboard from './pages/EmployeeDashboard';
 import Employees from './pages/Employees';
+import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
 
 const employeeCredentials = [
@@ -113,6 +114,11 @@ function App() {
         <Route 
           path="/employees" 
           element={ isAuthenticated ? <Employees /> : <Navigate to="/" replace /> } 
+        />
+
+        <Route 
+          path="/payroll" 
+          element={ isAuthenticated ? <Payroll /> : <Navigate to="/" replace /> } 
         />
 
         <Route 

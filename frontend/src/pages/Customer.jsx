@@ -1,7 +1,7 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
+import { Search, ChevronDown, Edit2, Trash2, Plus, X, Phone } from 'lucide-react';
 
 function Customer({ onLogout }) {
   const navigate = useNavigate();
@@ -16,8 +16,14 @@ function Customer({ onLogout }) {
   const [isEditEntryModalOpen, setIsEditEntryModalOpen] = useState(false);
   const [selectedCustomerIdentifiers, setSelectedCustomerIdentifiers] = useState([]);
   
-  const [newCustomerDetails, setNewCustomerDetails] = useState({ Cust_ID: '', Cust_FName: '', Cust_LName: '', Barangay_ID: '', Cust_Type: 'Personal', Borrowed_Cont: 0 });
+  const [newCustomerDetails, setNewCustomerDetails] = useState({ Cust_ID: '', Cust_FName: '', Cust_LName: '', Barangay_ID: '', Cust_Type: 'Personal', Borrowed_Cont: 0, Contact_Num: '' });
   const [draftCustomerEdits, setDraftCustomerEdits] = useState(null);
+
+  // Contact Sub-Modal States
+  const [contactListModalOpen, setContactListModalOpen] = useState(false);
+  const [contactModalTarget, setContactModalTarget] = useState('add'); 
+  const [currentContacts, setCurrentContacts] = useState([]);
+  const [newContactNum, setNewContactNum] = useState('');
 
   const fetchCustomerRecords = async () => {
     try {
@@ -55,27 +61,99 @@ function Customer({ onLogout }) {
     fetchBarangays();
   }, []);
 
+  // --- CONTACT LOGIC ---
+  const parseContacts = (contactData) => {
+    if (!contactData) return [];
+    return String(contactData).split(',').map(c => {
+      let numStr = c.trim();
+      if (numStr.length === 10 && numStr.startsWith('9')) {
+        numStr = '0' + numStr;
+      }
+      return numStr;
+    }).filter(Boolean);
+  };
+
+  const openContactModal = (targetMode) => {
+    setContactModalTarget(targetMode);
+    let contactsArray = [];
+
+    if (targetMode === 'add') {
+      contactsArray = parseContacts(newCustomerDetails.Contact_Num);
+    } else if (targetMode === 'edit') {
+      contactsArray = parseContacts(draftCustomerEdits.Contact_Num);
+    }
+    
+    setCurrentContacts(contactsArray);
+    setNewContactNum('');
+    setContactListModalOpen(true);
+  };
+
+  const handleAddContact = () => {
+    const num = newContactNum.trim();
+    if (!num) return;
+
+    if (!/^\d+$/.test(num)) return alert('Contact number must contain only numbers.');
+    if (num.length !== 11) return alert('Contact number must be exactly 11 digits long.');
+    if (!num.startsWith('09')) return alert('Contact number must start with "09".');
+    if (currentContacts.includes(num)) return alert('This contact number has already been added.');
+
+    setCurrentContacts([...currentContacts, num]);
+    setNewContactNum('');
+  };
+
+  const saveContactsAndClose = () => {
+    const joinedContacts = currentContacts.join(', ');
+    if (contactModalTarget === 'add') {
+      setNewCustomerDetails({ ...newCustomerDetails, Contact_Num: joinedContacts });
+    } else if (contactModalTarget === 'edit') {
+      setDraftCustomerEdits({ ...draftCustomerEdits, Contact_Num: joinedContacts });
+    }
+    setContactListModalOpen(false);
+  };
+  // ---------------------
+
   const handleAddNewCustomerSubmit = async (e) => {
     e.preventDefault();
+
+    // FIXED: Sanitize and format the number to guarantee the '09' prefix is present
+    const sanitizedContacts = parseContacts(newCustomerDetails.Contact_Num).join(', ');
+
+    if (!sanitizedContacts) {
+      alert('Please add at least one valid 11-digit contact number starting with "09".');
+      return;
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/customer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCustomerDetails)
+        body: JSON.stringify({
+          ...newCustomerDetails,
+          Contact_Num: sanitizedContacts // Send the perfectly formatted string
+        })
       });
       if (response.ok) {
         setIsAddEntryModalOpen(false);
-        setNewCustomerDetails({ Cust_ID: '', Cust_FName: '', Cust_LName: '', Barangay_ID: barangayOptions[0]?.Barangay_ID || '', Cust_Type: 'Personal', Borrowed_Cont: 0 });
+        setNewCustomerDetails({ Cust_ID: '', Cust_FName: '', Cust_LName: '', Barangay_ID: barangayOptions[0]?.Barangay_ID || '', Cust_Type: 'Personal', Borrowed_Cont: 0, Contact_Num: '' });
         fetchCustomerRecords();
       } else {
         const errorData = await response.json();
-        alert(errorData.error);
+        alert(`Failed: ${errorData.error}\n\nSystem Details: ${errorData.details || ''}`);
       }
     } catch (err) { console.error("Submission error:", err); }
   };
 
   const handleSaveCustomerEdits = async (e) => {
     e.preventDefault();
+
+    // FIXED: Sanitize and format the number to guarantee the '09' prefix is present
+    const sanitizedContacts = parseContacts(draftCustomerEdits.Contact_Num).join(', ');
+
+    if (!sanitizedContacts) {
+      alert('Please ensure the customer has at least one valid 11-digit contact number starting with "09".');
+      return;
+    }
+
     try {
       const response = await fetch(`http://localhost:5000/api/customer/${draftCustomerEdits.Cust_ID}`, {
         method: 'PUT',
@@ -85,7 +163,8 @@ function Customer({ onLogout }) {
           Cust_LName: draftCustomerEdits.Cust_LName,
           Barangay_ID: draftCustomerEdits.Barangay_ID,
           Cust_Type: draftCustomerEdits.Cust_Type,
-          Borrowed_Cont: draftCustomerEdits.Borrowed_Cont
+          Borrowed_Cont: draftCustomerEdits.Borrowed_Cont,
+          Contact_Num: sanitizedContacts // Send the perfectly formatted string
         })
       });
       if (response.ok) {
@@ -93,7 +172,7 @@ function Customer({ onLogout }) {
         fetchCustomerRecords();
       } else {
         const errorData = await response.json();
-        alert(errorData.error);
+        alert(`Update Failed: ${errorData.error}\n\nSystem Details: ${errorData.details || ''}`);
       }
     } catch (err) { console.error("Update error:", err); }
   };
@@ -135,6 +214,7 @@ function Customer({ onLogout }) {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Employees') navigate('/employees');
+    else if (menuName === 'Payroll') navigate('/payroll');
     else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
@@ -143,9 +223,7 @@ function Customer({ onLogout }) {
     <div style={styles.appContainer}>
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          {/* Replace the emoji div with this img tag */}
           <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
-          
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -216,10 +294,11 @@ function Customer({ onLogout }) {
                   <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>FIRST NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>LAST NAME</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '160px' }}>BARANGAY</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '150px' }}>BARANGAY</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '120px' }}>CONTACT</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>TYPE</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '100px' }}>BORROWED</th>
-                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '120px' }}>ACTIONS</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '90px' }}>BORROWED</th>
+                  <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -232,6 +311,7 @@ function Customer({ onLogout }) {
                     <td style={styles.tableBodyCellBlock}>{cust.Cust_FName}</td>
                     <td style={styles.tableBodyCellBlock}>{cust.Cust_LName}</td>
                     <td style={styles.tableBodyCellBlock}>{cust.Barangay_Name} (P{cust.Purok})</td>
+                    <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>{parseContacts(cust.Contact_Num)[0] || 'N/A'}</td>
                     <td style={styles.tableBodyCellBlock}>
                        <span style={{ 
                          ...styles.typeBadge, 
@@ -265,7 +345,7 @@ function Customer({ onLogout }) {
                 <div style={{ ...styles.modalHeaderTitleIconBox, color: '#0077b6' }}><Plus size={20} /></div>
                 <h2 style={styles.modalHeaderHeadingText}>ADD CUSTOMER</h2>
               </div>
-              <button style={styles.modalHeaderCloseXButton} onClick={() => setIsAddEntryModalOpen(false)}><X size={20} /></button>
+              <button type="button" style={styles.modalHeaderCloseXButton} onClick={() => setIsAddEntryModalOpen(false)}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleAddNewCustomerSubmit} style={styles.modalContentFormElement}>
@@ -310,6 +390,14 @@ function Customer({ onLogout }) {
                 </div>
 
                 <div style={styles.modalFormInputGroupFieldUnit}>
+                  <label style={styles.modalFormFieldLabelHeader}>CONTACT NUMBERS <span style={{color: 'red'}}>*</span></label>
+                  <button type="button" onClick={() => openContactModal('add')} style={styles.manageContactsButton}>
+                     <Phone size={14} style={{ marginRight: '8px' }} /> 
+                     {newCustomerDetails.Contact_Num ? `${parseContacts(newCustomerDetails.Contact_Num).length} Contacts Added` : 'Manage Contacts'}
+                  </button>
+                </div>
+
+                <div style={styles.modalFormInputGroupFieldUnit}>
                   <label style={styles.modalFormFieldLabelHeader}>BORROWED CONT.</label>
                   <input type="number" min="0" max={newCustomerDetails.Cust_Type === 'Reseller' ? "11" : "99"} value={newCustomerDetails.Borrowed_Cont} onChange={(e) => setNewCustomerDetails({...newCustomerDetails, Borrowed_Cont: e.target.value})} style={styles.modalActiveInputField} />
                 </div>
@@ -333,7 +421,7 @@ function Customer({ onLogout }) {
                 <div style={{ ...styles.modalHeaderTitleIconBox, color: '#0077b6' }}><Edit2 size={20} /></div>
                 <h2 style={styles.modalHeaderHeadingText}>EDIT CUSTOMER</h2>
               </div>
-              <button style={styles.modalHeaderCloseXButton} onClick={() => setIsEditEntryModalOpen(false)}><X size={20} /></button>
+              <button type="button" style={styles.modalHeaderCloseXButton} onClick={() => setIsEditEntryModalOpen(false)}><X size={20} /></button>
             </div>
 
             <form onSubmit={handleSaveCustomerEdits} style={styles.modalContentFormElement}>
@@ -378,6 +466,14 @@ function Customer({ onLogout }) {
                 </div>
 
                 <div style={styles.modalFormInputGroupFieldUnit}>
+                  <label style={styles.modalFormFieldLabelHeader}>CONTACT NUMBERS <span style={{color: 'red'}}>*</span></label>
+                  <button type="button" onClick={() => openContactModal('edit')} style={styles.manageContactsButton}>
+                     <Phone size={14} style={{ marginRight: '8px' }} /> 
+                     {draftCustomerEdits.Contact_Num ? `${parseContacts(draftCustomerEdits.Contact_Num).length} Contacts Added` : 'Manage Contacts'}
+                  </button>
+                </div>
+
+                <div style={styles.modalFormInputGroupFieldUnit}>
                   <label style={styles.modalFormFieldLabelHeader}>BORROWED CONT.</label>
                   <input type="number" min="0" max={draftCustomerEdits.Cust_Type === 'Reseller' ? "11" : "99"} value={draftCustomerEdits.Borrowed_Cont} onChange={(e) => setDraftCustomerEdits({...draftCustomerEdits, Borrowed_Cont: e.target.value})} style={styles.modalActiveInputField} />
                 </div>
@@ -388,6 +484,50 @@ function Customer({ onLogout }) {
                 <button type="submit" style={styles.modalPrimaryActionSaveButton}>Save Changes</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ================= DYNAMIC CONTACT LIST MODAL ================= */}
+      {contactListModalOpen && (
+        <div style={{...styles.modalOverlayMask, zIndex: 2010}}>
+          <div style={styles.miniModalContainer}>
+            <div style={{ ...styles.modalHeaderRow, marginBottom: '15px' }}>
+               <h3 style={styles.modalHeaderHeadingText}>Manage Contacts</h3>
+               <button type="button" style={styles.modalHeaderCloseXButton} onClick={() => setContactListModalOpen(false)}><X size={20} /></button>
+            </div>
+            
+            <ul style={styles.contactListUl}>
+               {currentContacts.length > 0 ? (
+                  currentContacts.map((contact, index) => (
+                    <li key={index} style={styles.contactListLi}>
+                      {contact}
+                      <button type="button" onClick={() => setCurrentContacts(currentContacts.filter((_, i) => i !== index))} style={{background:'none', border:'none', color:'#ef4444', cursor:'pointer'}}><X size={14}/></button>
+                    </li>
+                  ))
+               ) : (
+                  <li style={styles.contactListLi}>No contacts registered.</li>
+               )}
+            </ul>
+
+            <div style={styles.addContactRow}>
+               <input 
+                  type="text" 
+                  maxLength="11"
+                  placeholder="e.g. 09123456789" 
+                  value={newContactNum} 
+                  onChange={(e) => {
+                     const digitsOnly = e.target.value.replace(/\D/g, '');
+                     setNewContactNum(digitsOnly);
+                  }} 
+                  style={styles.miniInputField} 
+               />
+               <button type="button" onClick={handleAddContact} style={styles.addContactButton}>Add</button>
+            </div>
+
+            <button type="button" onClick={saveContactsAndClose} style={{...styles.modalPrimaryActionSaveButton, width: '100%', marginTop: '20px'}}>
+              Done
+            </button>
           </div>
         </div>
       )}
@@ -430,6 +570,7 @@ const styles = {
   inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   modalOverlayMask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   modalWindowContainer: { backgroundColor: '#ffffff', width: '90%', maxWidth: '600px', borderRadius: '12px', border: '1px solid #0077b6', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
+  miniModalContainer: { backgroundColor: '#ffffff', width: '90%', maxWidth: '380px', borderRadius: '12px', border: '1px solid #0077b6', padding: '24px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
   modalHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', width: '100%' },
   modalHeaderTitleGroup: { display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #bde0fe', paddingBottom: '15px' },
   modalHeaderTitleIconBox: { fontSize: '1.5rem', display: 'flex' },
@@ -446,7 +587,13 @@ const styles = {
   modalSelectChevronOverlayIcon: { position: 'absolute', right: '16px', pointerEvents: 'none' },
   modalFooterButtonsControlFlexRow: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '14px', width: '100%' },
   modalDismissCancelButtonLink: { background: 'none', border: 'none', color: '#0077b6', fontWeight: '700', fontSize: '0.98rem', cursor: 'pointer', padding: '14px 20px' },
-  modalPrimaryActionSaveButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px 32px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.25)' }
+  modalPrimaryActionSaveButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px 32px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.25)' },
+  manageContactsButton: { backgroundColor: '#eaf4fc', color: '#0077b6', border: '1px solid #0077b6', borderRadius: '10px', padding: '14px 16px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', boxSizing: 'border-box' },
+  contactListUl: { listStyle: 'none', padding: 0, margin: 0, border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', maxHeight: '150px', overflowY: 'auto' },
+  contactListLi: { padding: '12px 16px', borderBottom: '1px solid #e2e8f0', color: '#012a4a', fontWeight: '600', fontSize: '0.95rem', backgroundColor: '#f8fafc', display: 'flex', justifyContent: 'space-between' },
+  addContactRow: { display: 'flex', alignItems: 'center', gap: '10px', marginTop: '15px' },
+  miniInputField: { flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #bde0fe', backgroundColor: '#ffffff', color: '#012a4a', fontSize: '0.9rem', outline: 'none' },
+  addContactButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer' },
 };
 
 export default Customer;

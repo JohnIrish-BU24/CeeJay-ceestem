@@ -1,9 +1,8 @@
-import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Trash2, Edit2, Plus, X, Eye, User, Phone, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-function Employee() {
+function Employees() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -23,7 +22,7 @@ function Employee() {
   const [addPhotoPreview, setAddPhotoPreview] = useState(null);
   const [editPhotoPreview, setEditPhotoPreview] = useState(null);
 
-  // Add Employee Modal (Now includes Password)
+  // Add Employee Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({
     Emp_ID: '', Emp_FName: '', Emp_LName: '', Role_ID: 'R', Contact_Num: '', License_Num: '', License_Exp: '', Password: ''
@@ -108,26 +107,61 @@ function Employee() {
     setIsEditModalOpen(true);
   };
 
+  // NEW: Clean parser that simply splits by commas without chopping digits
+  // NEW: Parses contacts and restores leading zero if stripped by the database
+  const parseContacts = (contactData) => {
+    if (!contactData) return [];
+    return String(contactData).split(',').map(c => {
+      let numStr = c.trim();
+      // If the number is exactly 10 digits and starts with '9', restore the '0'
+      if (numStr.length === 10 && numStr.startsWith('9')) {
+        numStr = '0' + numStr;
+      }
+      return numStr;
+    }).filter(Boolean);
+  };
+
   const openContactModal = (targetMode) => {
     setContactModalTarget(targetMode);
     let contactsArray = [];
-    if (targetMode === 'add' && formData.Contact_Num) {
-      contactsArray = String(formData.Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
-    } else if (targetMode === 'edit' && draftEmployeeEdits.Contact_Num) {
-      contactsArray = String(draftEmployeeEdits.Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
-    } else if (targetMode === 'view' && selectedEmp?.Contact_Num) {
-      contactsArray = String(selectedEmp.Contact_Num).split(',').map(c => c.trim()).filter(Boolean);
+
+    if (targetMode === 'add') {
+      contactsArray = parseContacts(formData.Contact_Num);
+    } else if (targetMode === 'edit') {
+      contactsArray = parseContacts(draftEmployeeEdits.Contact_Num);
+    } else if (targetMode === 'view') {
+      contactsArray = parseContacts(selectedEmp?.Contact_Num);
     }
+    
     setCurrentContacts(contactsArray);
     setNewContactNum('');
     setContactListModalOpen(true);
   };
 
+  // NEW: Strict Contact Validations
   const handleAddContact = () => {
-    if (newContactNum.trim() !== '') {
-      setCurrentContacts([...currentContacts, newContactNum.trim()]);
-      setNewContactNum('');
+    const num = newContactNum.trim();
+    if (!num) return;
+
+    if (!/^\d+$/.test(num)) {
+      alert('Contact number must contain only numbers.');
+      return;
     }
+    if (num.length !== 11) {
+      alert('Contact number must be exactly 11 digits long.');
+      return;
+    }
+    if (!num.startsWith('09')) {
+      alert('Contact number must start with "09".');
+      return;
+    }
+    if (currentContacts.includes(num)) {
+      alert('This contact number has already been added.');
+      return;
+    }
+
+    setCurrentContacts([...currentContacts, num]);
+    setNewContactNum('');
   };
 
   const saveContactsAndClose = () => {
@@ -142,6 +176,25 @@ function Employee() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // 1. Validate Contacts
+    if (!formData.Contact_Num) {
+      alert('Please add at least one valid 11-digit contact number starting with "09".');
+      return;
+    }
+
+    // 2. Validate Driver-Specific Fields
+    if (formData.Role_ID === 'D') {
+      if (!formData.License_Num || formData.License_Num.trim() === '') {
+        alert('Validation Error: Drivers must have a valid License Number.');
+        return;
+      }
+      if (!formData.License_Exp || formData.License_Exp.trim() === '') {
+        alert('Validation Error: Drivers must have a valid License Expiry Date.');
+        return;
+      }
+    }
+
     try {
       const response = await fetch('http://localhost:5000/api/employee', {
         method: 'POST',
@@ -155,19 +208,40 @@ function Employee() {
         }
         fetchData(); 
         setIsModalOpen(false); 
+        // Reset form completely
         setFormData({ Emp_ID: '', Emp_FName: '', Emp_LName: '', Role_ID: 'R', Contact_Num: '', License_Num: '', License_Exp: '', Password: '' }); 
         setAddPhotoPreview(null);
       } else {
         const errorData = await response.json();
-        alert(`Failed: ${errorData.error}`);
+        alert(`Failed: ${errorData.error}\n\nSystem Details: ${errorData.details || ''}`);
       }
     } catch (error) {
       console.error('Error adding employee:', error);
+      alert('Network error while trying to add employee.');
     }
   };
 
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
+    
+    // 1. Validate Contacts
+    if (!draftEmployeeEdits.Contact_Num) {
+      alert('Please ensure the employee has at least one valid 11-digit contact number starting with "09".');
+      return;
+    }
+
+    // 2. Validate Driver-Specific Fields
+    if (draftEmployeeEdits.Role_ID === 'D') {
+      if (!draftEmployeeEdits.License_Num || draftEmployeeEdits.License_Num.trim() === '') {
+        alert('Validation Error: Drivers must have a valid License Number.');
+        return;
+      }
+      if (!draftEmployeeEdits.License_Exp || draftEmployeeEdits.License_Exp.trim() === '') {
+        alert('Validation Error: Drivers must have a valid License Expiry Date.');
+        return;
+      }
+    }
+
     try {
       const response = await fetch(`http://localhost:5000/api/employee/${draftEmployeeEdits.Emp_ID}`, {
         method: 'PUT',
@@ -183,10 +257,11 @@ function Employee() {
         fetchData();
       } else {
         const errorData = await response.json();
-        alert(`Update Failed: ${errorData.error}`);
+        alert(`Update Failed: ${errorData.error}\n\nSystem Details: ${errorData.details || 'No additional details provided'}`);
       }
     } catch (error) {
       console.error('Error updating employee:', error);
+      alert('Network error while trying to update employee.');
     }
   };
 
@@ -282,6 +357,7 @@ function Employee() {
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Employees') navigate('/employees');
+    else if (menuName === 'Payroll') navigate('/payroll');
     else if (menuName === 'Reports') navigate('/reports');
     else alert(`${menuName} page not yet implemented`);
   };
@@ -301,8 +377,7 @@ function Employee() {
       {/* NAVIGATION BAR */}
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
-          
+          <div style={styles.brandIconContainer}>💧</div>
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -387,7 +462,6 @@ function Employee() {
                   <th style={{ ...styles.tableHeaderColumnCell, width: '80px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '220px' }}>NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>ROLE</th>
-                  {/* CHANGED TO CONTACT */}
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CONTACT</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '110px' }}>DETAILS</th>
                   <th style={{ ...styles.tableHeaderColumnCell, textAlign: 'center', width: '100px' }}>ACTIONS</th>
@@ -409,9 +483,9 @@ function Employee() {
                            {emp.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                          </span>
                       </td>
-                      {/* CHANGED TO DISPLAY FIRST CONTACT NUMBER */}
+                      {/* Uses the safe parseContacts array to display the first item only */}
                       <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>
-                         {emp.Contact_Num ? emp.Contact_Num.split(',')[0].trim() : 'N/A'}
+                         {parseContacts(emp.Contact_Num)[0] || 'N/A'}
                       </td>
                       <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
                          <button onClick={() => handleViewDetails(emp)} style={styles.seeMoreButton}>See More</button>
@@ -531,7 +605,18 @@ function Employee() {
 
             {contactModalTarget !== 'view' && (
               <div style={styles.addContactRow}>
-                 <input type="text" placeholder="New number..." value={newContactNum} onChange={(e) => setNewContactNum(e.target.value)} style={styles.miniInputField} />
+                 {/* STRIPPED INPUT: Enforces maximum length and strips letters/symbols as you type */}
+                 <input 
+                    type="text" 
+                    maxLength="11"
+                    placeholder="e.g. 09123456789" 
+                    value={newContactNum} 
+                    onChange={(e) => {
+                       const digitsOnly = e.target.value.replace(/\D/g, '');
+                       setNewContactNum(digitsOnly);
+                    }} 
+                    style={styles.miniInputField} 
+                 />
                  <button type="button" onClick={handleAddContact} style={styles.addContactButton}>Add</button>
               </div>
             )}
@@ -633,7 +718,7 @@ function Employee() {
                       <label style={styles.modalFormFieldLabelHeader}>CONTACT NUMBERS <span style={{color: 'red'}}>*</span></label>
                       <button type="button" onClick={() => openContactModal('add')} style={styles.manageContactsButton}>
                          <Phone size={14} style={{ marginRight: '8px' }} /> 
-                         {formData.Contact_Num ? `${formData.Contact_Num.split(',').length} Contacts Added` : 'Manage Contacts'}
+                         {formData.Contact_Num ? `${parseContacts(formData.Contact_Num).length} Contacts Added` : 'Manage Contacts'}
                       </button>
                     </div>
 
@@ -734,7 +819,7 @@ function Employee() {
                       <label style={styles.modalFormFieldLabelHeader}>CONTACT NUMBERS <span style={{color: 'red'}}>*</span></label>
                       <button type="button" onClick={() => openContactModal('edit')} style={styles.manageContactsButton}>
                          <Phone size={14} style={{ marginRight: '8px' }} /> 
-                         {draftEmployeeEdits.Contact_Num ? `${draftEmployeeEdits.Contact_Num.split(',').length} Contacts Added` : 'Manage Contacts'}
+                         {draftEmployeeEdits.Contact_Num ? `${parseContacts(draftEmployeeEdits.Contact_Num).length} Contacts Added` : 'Manage Contacts'}
                       </button>
                     </div>
                     <div style={styles.modalFormInputGroupFieldUnit}></div>
@@ -779,7 +864,6 @@ function Employee() {
 }
 
 const styles = {
-  brandLogo: {width: '60px', height: '60px', objectFit: 'contain'},
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
@@ -899,4 +983,4 @@ const styles = {
   modalPrimaryActionSaveButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '10px 24px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.25)' }
 };
 
-export default Employee;
+export default Employees;
