@@ -133,7 +133,8 @@ function Services() {
   };
 
   const handleRibbonNavigation = (menuName) => {
-    if (menuName === 'Transaction') navigate('/transaction');
+    if (menuName === 'Dashboard') navigate('/dashboard'); // 📍 This is the new line!
+    else if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
