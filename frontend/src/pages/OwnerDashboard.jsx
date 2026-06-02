@@ -233,7 +233,7 @@ function OwnerDashboard({ onLogout }) {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '8px' }}>
             <div>
               <h1 style={{ fontSize: '1.9rem', color: '#012a4a', margin: '0 0 8px 0', fontWeight: '800', letterSpacing: '-0.5px' }}>
-                Welcome back, Owner
+                Welcome back!
               </h1>
               <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem' }}>
                 Here is a detailed snapshot of your refilling station today.
