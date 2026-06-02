@@ -9,6 +9,7 @@ import EmployeeDashboard from './pages/EmployeeDashboard';
 import Employees from './pages/Employees';
 import Payroll from './pages/Payroll';
 import Reports from './pages/Reports';
+import OwnerDashboard from './pages/OwnerDashboard';
 
 const employeeCredentials = [
   { id: 'R1', password: 'ref1', role: 'refiller' },
@@ -64,12 +65,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        {/* 1. Dynamic Root Route: Send owners to transaction, employees to dashboard */}
+        {/* 1. Dynamic Root Route: Send owners to Dashboard, employees to their dashboard */}
         <Route 
           path="/" 
           element={ 
             isAuthenticated ? (
-              userRole === 'owner' ? <Navigate to="/transaction" replace /> : <Navigate to="/employee" replace />
+              // 📍 CHANGED: Now redirects Owner to /dashboard
+              userRole === 'owner' ? <Navigate to="/dashboard" replace /> : <Navigate to="/employee" replace />
             ) : (
               <Login onLoginVerify={handleLoginVerify} /> 
             )
@@ -77,7 +79,17 @@ function App() {
         />
         <Route path="/login" element={<Navigate to="/" replace />} />
 
-        {/* 2. Protected Transaction Route: Ensure only owners can stay here */}
+        {/* 📍 ADDED: The new Protected Dashboard Route for Owners */}
+        <Route 
+          path="/dashboard" 
+          element={
+            isAuthenticated ? (
+              userRole === 'owner' ? <OwnerDashboard /> : <Navigate to="/employee" replace />
+            ) : <Navigate to="/" replace /> 
+          } 
+        />
+
+        {/* 2. Protected Transaction Route */}
         <Route 
           path="/transaction" 
           element={

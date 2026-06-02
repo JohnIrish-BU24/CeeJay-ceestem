@@ -1,3 +1,4 @@
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, ChevronDown, Trash2, Edit2, Plus, X, Eye, User, Phone, Info } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -352,7 +353,8 @@ function Employees() {
   };
 
   const handleRibbonNavigation = (menuName) => {
-    if (menuName === 'Transaction') navigate('/transaction');
+    if (menuName === 'Dashboard') navigate('/dashboard'); 
+    else if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
@@ -377,7 +379,7 @@ function Employees() {
       {/* NAVIGATION BAR */}
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          <div style={styles.brandIconContainer}>💧</div>
+          <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -479,7 +481,7 @@ function Employees() {
                       <td style={styles.tableBodyCellBlock}><strong>{emp.Emp_ID}</strong></td>
                       <td style={styles.tableBodyCellBlock}>{emp.Emp_FName} {emp.Emp_LName}</td>
                       <td style={styles.tableBodyCellBlock}>
-                         <span style={{ ...styles.typeBadge, backgroundColor: emp.Role_ID === 'D' ? '#e0e7ff' : '#dcfce7', color: emp.Role_ID === 'D' ? '#3730a3' : '#166534' }}>
+                         <span style={{ ...styles.typeBadge, backgroundColor: emp.Role_ID === 'D' ? '#f3e8ff' : '#e0f2fe', color: emp.Role_ID === 'D' ? '#6b21a8' : '#0369a1' }}>
                            {emp.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                          </span>
                       </td>
@@ -864,7 +866,8 @@ function Employees() {
 }
 
 const styles = {
-  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
+  brandLogo: { width: '44px', height: '44px', objectFit: 'contain' },
+  appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#dceef8', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
   brandIconContainer: { fontSize: '1.4rem' },

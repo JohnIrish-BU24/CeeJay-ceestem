@@ -209,7 +209,8 @@ function Customer({ onLogout }) {
   };
 
   const handleRibbonNavigation = (menuName) => {
-    if (menuName === 'Transaction') navigate('/transaction');
+    if (menuName === 'Dashboard') navigate('/dashboard'); // 📍 This is the new line!
+    else if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Services') navigate('/services');
@@ -315,8 +316,8 @@ function Customer({ onLogout }) {
                     <td style={styles.tableBodyCellBlock}>
                        <span style={{ 
                          ...styles.typeBadge, 
-                         backgroundColor: cust.Cust_Type === 'Reseller' ? '#e0e7ff' : '#dcfce7',
-                         color: cust.Cust_Type === 'Reseller' ? '#3730a3' : '#166534'
+                         backgroundColor: cust.Cust_Type === 'Reseller' ? '#eaf1feda':'#fff3e0',
+                         color: cust.Cust_Type === 'Reseller' ?  '#0043d3b5' : '#e65100c7',
                        }}>
                          {cust.Cust_Type}
                        </span>

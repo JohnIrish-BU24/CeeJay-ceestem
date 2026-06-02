@@ -989,9 +989,9 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
         {tx.Cust_Type && (
           <span style={{ 
             fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, textTransform: 'capitalize',
-            background: isReseller ? '#fffcdd' : '#eaf1fe', 
-            color: isReseller ? '#a58501' : '#0043d3',      
-            border: `1px solid ${isReseller ? '#f1cc35' : '#b2bdee'}`
+            background: isReseller ? '#eaf1feda' : '#fff3e0', 
+            color: isReseller ? '#0043d3b5' : '#e65100c7',      
+            border: `1px solid ${isReseller ? '#b2bdee' : '#fdba74'}`
           }}>
             {tx.Cust_Type}
           </span>
@@ -1034,9 +1034,9 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
       <div style={{ flex: 0.8, minWidth: 80, textAlign: 'center' }}>
         <span style={{ 
             fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20,
-            background: isDelivery ? '#f3e8ff' : '#fff3e0', 
-            color: isDelivery ? '#581c87' : '#e65100',
-            border: `1px solid ${isDelivery ? '#d8b4fe' : '#fdba74'}`
+            background: isDelivery ? '#f3e8ff' : '#f0f9ff', 
+            color: isDelivery ? '#581c87' : '#0284c7',
+            border: `1px solid ${isDelivery ? '#ae7de1' : '#409ecd'}`
           }}>
           {tx.Serv_Name}
         </span>
