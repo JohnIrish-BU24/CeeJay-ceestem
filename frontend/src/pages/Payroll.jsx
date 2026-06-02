@@ -1,7 +1,7 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ChevronDown, Trash2, Plus, X, Eye, Archive, RotateCcw, CheckSquare, Info, Printer, Filter } from 'lucide-react';
+import { Search, ChevronDown, Plus, X, Eye, Archive, RotateCcw, CheckSquare, Info, Printer, Filter, LogOut } from 'lucide-react';
 
 function Payroll() {
   const navigate = useNavigate();
@@ -97,6 +97,12 @@ function Payroll() {
 
   const formatDate = (dateString) => dateString ? dateString.split('T')[0] : '';
 
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('activeEmployee');
+    window.location.href = '/login'; 
+  };
+
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
@@ -182,6 +188,10 @@ function Payroll() {
                 }}
              >{menu}</button>
           ))}
+          <div style={styles.navDivider}></div>
+          <button onClick={handleLogout} style={styles.signOutButton}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </nav>
 
@@ -259,7 +269,6 @@ function Payroll() {
                           {record.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                         </span>
                     </td>
-                    {/* Replaced manual math with database values */}
                     <td style={{...styles.tableBodyCellBlock, fontWeight: '600'}}>{record.Days_Worked || 0}</td>
                     <td style={{...styles.tableBodyCellBlock, color: '#16a34a'}}>
                       ₱ {(parseFloat(record.Total_Incentive) || 0).toFixed(2)}
@@ -275,7 +284,7 @@ function Payroll() {
                         <button onClick={() => { setActiveRecord(record); setIsViewModalOpen(true); }} style={styles.inlineRowViewButton}><Eye size={16} /></button>
                         
                         {viewMode === 'Active' ? (
-                            <button onClick={() => handleArchive(record.Payroll_ID)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
+                            <button onClick={() => handleArchive(record.Payroll_ID)} style={styles.inlineRowArchiveButton} title="Archive"><Archive size={16} /></button>
                         ) : (
                           <button onClick={() => handleRestore(record.Payroll_ID)} style={styles.inlineRowRestoreButton}><RotateCcw size={16} /> Restore</button>
                         )}
@@ -334,7 +343,6 @@ function Payroll() {
                      <p style={styles.breakdownLabel}>Base Daily Rate:</p> 
                      <p style={styles.breakdownValue}>₱ {activeRecord.Salary}</p>
                      
-                     {/* Using the permanent backend values now! */}
                      <p style={styles.breakdownLabel}>Days Worked:</p> 
                      <p style={styles.breakdownValue}>{activeRecord.Days_Worked || 0} Days</p>
 
@@ -442,6 +450,8 @@ const styles = {
   brandSubTitle: { color: '#00b4d8', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '1px' },
   navMenuLinksRow: { display: 'flex', height: '100%', alignItems: 'center', gap: '4px' },
   navMenuButton: { background: 'none', border: 'none', height: '100%', padding: '0 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease' },
+  navDivider: { width: '2px', height: '24px', backgroundColor: '#00b4d8', margin: '0 10px', opacity: 0.5 },
+  signOutButton: { backgroundColor: '#ef4444', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' },
   workspaceBodyWrapper: { flex: 1, overflowY: 'auto', backgroundColor: '#e6f2fa', padding: '20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
   dataLogTableCanvasCard: { backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #bde0fe', padding: '30px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)', height: 'calc(100vh - 110px)', width: '100%', overflow: 'hidden' },
   tableControlsGridRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px', width: '100%', boxSizing: 'border-box' },
@@ -467,7 +477,7 @@ const styles = {
   typeBadge: { padding: '4px 12px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: '700', display: 'inline-block' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowViewButton: { backgroundColor: '#f3f4f6', border: 'none', borderRadius: '6px', color: '#4b5563', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  inlineRowArchiveButton: { backgroundColor: '#fef3c7', border: 'none', borderRadius: '6px', color: '#f59e0b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
   inlineRowRestoreButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' },
   
   modalOverlayMask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, overflowY: 'hidden' },
@@ -495,13 +505,8 @@ const styles = {
   breakdownCard: { backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', display: 'flex', flexDirection: 'column' },
   slipSection: { marginBottom: '12px' },
   slipSectionTitle: { fontSize: '0.85rem', fontWeight: '800', color: '#0369a1', borderBottom: '1px solid #bae6fd', paddingBottom: '4px', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: 0 },
-  
-  // CHANGED: gridTemplateColumns changed to 'auto 1fr' to give the right side more space
   breakdownGrid: { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '6px 16px', alignItems: 'center' },
-  
-  // CHANGED: Added textAlign: 'left'
   breakdownLabel: { fontSize: '0.85rem', fontWeight: '600', color: '#64748b', margin: 0, textAlign: 'left' },
-  
   breakdownValue: { fontSize: '0.9rem', fontWeight: '800', color: '#0f172a', textAlign: 'right', margin: 0 },
   netPayHighlightBox: { backgroundColor: '#e0f2fe', border: '1px solid #7dd3fc', borderRadius: '8px', padding: '12px 16px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.15rem', fontWeight: '900', color: '#0369a1' }
 };

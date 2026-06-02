@@ -1,6 +1,6 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, Printer, Briefcase, Users, FileWarning, Calendar, TrendingUp, BarChart2, X } from 'lucide-react';
+import { ChevronDown, Printer, Briefcase, Users, FileWarning, Calendar, TrendingUp, BarChart2, X, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { 
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer 
@@ -209,6 +209,12 @@ function Reports() {
       setActiveCategory(category);
       setSelectedReport(reportId);
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('activeEmployee');
+    window.location.href = '/login'; 
   };
 
   const handleRibbonNavigation = (menuName) => {
@@ -479,6 +485,10 @@ function Reports() {
               </button>
             );
           })}
+          <div style={styles.navDivider}></div>
+          <button onClick={handleLogout} style={styles.signOutButton}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </nav>
 
@@ -746,6 +756,8 @@ const styles = {
   brandSubTitle: { color: '#00b4d8', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '1px' },
   navMenuLinksRow: { display: 'flex', height: '100%', alignItems: 'center', gap: '4px' },
   navMenuButton: { background: 'none', border: 'none', height: '100%', padding: '0 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease' },
+  navDivider: { width: '2px', height: '24px', backgroundColor: '#00b4d8', margin: '0 10px', opacity: 0.5 },
+  signOutButton: { backgroundColor: '#ef4444', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' },
   workspaceBodyWrapper: { flex: 1, overflowY: 'auto', backgroundColor: '#e6f2fa', padding: '20px ', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
   dataLogTableCanvasCard: { backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #bde0fe', padding: '30px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)', height: 'calc(100vh - 110px)', width: '100%', overflow: 'hidden' },
   tableControlsGridRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px', width: '100%', boxSizing: 'border-box', flexWrap: 'wrap' },
