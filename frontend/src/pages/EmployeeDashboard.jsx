@@ -956,7 +956,7 @@ const TransactionCard = ({ tx, onDelete }) => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 'auto', paddingTop: 16, borderTop: '1px dashed #e2e8f0' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           <span style={{ fontSize: 12, color: '#64748b', fontWeight: 600 }}>Amount ({tx.Quantity} qty)</span>
-          <span style={{ fontSize: 18, fontWeight: 800, color: '#1a7ab5' }}>₱{Number(tx.Selling_Price || 0).toFixed(2)}</span>
+          <span style={{ fontSize: 18, fontWeight: 800, color: '#1a7ab5' }}>₱{(Number(tx.Selling_Price || 0) * Number(tx.Quantity || 1)).toFixed(2)}</span>
           {tx.Borrowed_Qty > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#e65100' }}>{tx.Borrowed_Qty} owed containers</span>}
         </div>
         
@@ -1049,7 +1049,7 @@ const TransactionRow = ({ tx, onEdit, onDelete }) => {
 
       {/* 7. AMOUNT */}
       <div style={{ flex: 0.7, minWidth: 80, textAlign: 'center', fontSize: 14, fontWeight: 700, color: '#102a43' }}>
-        ₱{Number(tx.Selling_Price || 0).toFixed(2)}
+        ₱{(Number(tx.Selling_Price || 0) * Number(tx.Quantity || 1)).toFixed(2)}
       </div>
 
       {/* 8. STATUS */}
@@ -1185,7 +1185,10 @@ export default function EmployeeDashboard({ onSignOut, refiller = 'Refiller' }) 
         Serv_ID: formData.serviceType === 'delivery' ? 2 : 1,
         
         Quantity: Number(formData.quantity),
-        Selling_Price: Number(formData.total),
+        // 📍 FIX: Store the unit price (₱35 delivery / ₱30 walk-in), NOT the total.
+        // The owner's Transaction page reads Selling_Price as the per-unit price.
+        // Total amount is derived on display as: Selling_Price × Quantity (minus promo).
+        Selling_Price: formData.serviceType === 'delivery' ? 35 : 30,
         Promo: formData.quantity >= 10 ? 'Yes' : 'No'
       }]
     };

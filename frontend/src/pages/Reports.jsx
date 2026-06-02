@@ -241,7 +241,9 @@ function Reports() {
       'TRANS DATE': 'TRANSACTION DATE',
       'TRANS ID': 'TRANSACTION ID',
       'BORROWED CONT': 'BORROWED CONTAINERS',
-      'ROLE ID': 'JOB ROLE'
+      'ROLE ID': 'JOB ROLE',
+      'TOTAL UNPAID GALLONS': 'TOTAL UNPAID GALLONS',
+      'TOTAL UNPAID AMOUNT': 'TOTAL BALANCE DUE'
     };
 
     return targetHeaderMappings[formattedKeyTitle] || formattedKeyTitle;
@@ -271,12 +273,11 @@ function Reports() {
 
     // UPDATED: Dynamic Currency Formatter to include Unpaid_Amount
     if (key) {
-        const upKey = key.toUpperCase();
-        if (['GROSS_REVENUE', 'CASH_COLLECTED', 'PRICE', 'TOTAL_SALES', 'OUTSTANDING_CREDIT', 'UNPAID_AMOUNT'].includes(upKey)) {
-            return `₱${Number(val).toFixed(2)}`;
+    const upKey = key.toUpperCase();
+    if (['GROSS_REVENUE', 'CASH_COLLECTED', 'PRICE', 'TOTAL_SALES', 'OUTSTANDING_CREDIT', 'UNPAID_AMOUNT', 'TOTAL_UNPAID_AMOUNT'].includes(upKey)) {
+        return `₱${Number(val).toFixed(2)}`;
         }
     }
-
     if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(val)) {
       const parsedDateObject = new Date(val);
       if (!isNaN(parsedDateObject.getTime())) {

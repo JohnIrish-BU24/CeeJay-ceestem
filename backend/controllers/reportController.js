@@ -112,22 +112,39 @@ exports.getActiveInventoryReport = async (req, res) => {
     }
 };
 
-// 6. Unpaid Collections List (Trans_record, Trans_detail, Customer, Customer_num)
+
+// 6. Unpaid Collections List (Aggregated per Customer)
 exports.getUnpaidCollections = async (req, res) => {
+    const { search } = req.query; // Capture search query if sent from client
     try {
-        const queryText = `
-            SELECT tr.Trans_Date, c.Cust_LName, c.Cust_FName,
-                   GROUP_CONCAT(cn.Contact_Num SEPARATOR ', ') AS Contact_Numbers,
-                   SUM(td.Quantity * td.Selling_Price) AS Unpaid_Amount
+        let queryText = `
+            SELECT 
+                c.Cust_ID,
+                c.Cust_LName, 
+                c.Cust_FName,
+                GROUP_CONCAT(DISTINCT cn.Contact_Num SEPARATOR ', ') AS Contact_Numbers,
+                SUM(td.Quantity) AS Total_Unpaid_Gallons,
+                SUM(td.Quantity * td.Selling_Price) AS Total_Unpaid_Amount
             FROM TRANS_RECORD tr
             JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
             JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
             LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
             WHERE tr.Remarks = 'Unpaid'
-            GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName
-            ORDER BY tr.Trans_Date DESC
         `;
-        const [rows] = await db.query(queryText);
+        
+        let filterParams = [];
+        if (search) {
+            queryText += ` AND (c.Cust_LName LIKE ? OR c.Cust_FName LIKE ?) `;
+            const searchWildcard = `%${search.trim()}%`;
+            filterParams.push(searchWildcard, searchWildcard);
+        }
+
+        queryText += `
+            GROUP BY c.Cust_ID, c.Cust_LName, c.Cust_FName
+            ORDER BY Total_Unpaid_Amount DESC
+        `;
+
+        const [rows] = await db.query(queryText, filterParams);
         res.json(rows);
     } catch (error) {
         res.status(500).json({ error: "Failed to generate Unpaid Collections List", details: error.message });
