@@ -100,6 +100,7 @@ function Payroll() {
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
+    else if (menuName === 'Services') navigate('/services');
     else if (menuName === 'Customers') navigate('/customers');
     else if (menuName === 'Employees') navigate('/employees');
     else if (menuName === 'Payroll') navigate('/payroll');

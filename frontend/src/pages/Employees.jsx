@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, ChevronDown, Trash2, Edit2, Plus, X, Eye, User, Phone, Info } from 'lucide-react';
+import { Search, ChevronDown, Archive, RotateCcw, Edit2, Plus, X, Eye, User, Phone, Info, LogOut } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 function Employees() {
@@ -12,6 +12,7 @@ function Employees() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('All'); 
+  const [viewMode, setViewMode] = useState('Active'); 
   
   const [selectedEmployeeIds, setSelectedEmployeeIds] = useState([]);
 
@@ -51,7 +52,7 @@ function Employees() {
   const fetchData = async () => {
     try {
       const [empRes, roleRes] = await Promise.all([
-        fetch('http://localhost:5000/api/employee'),
+        fetch(`http://localhost:5000/api/employee?status=${viewMode}`),
         fetch('http://localhost:5000/api/employee/roles')
       ]);
 
@@ -74,7 +75,7 @@ function Employees() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [viewMode]); 
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -107,13 +108,10 @@ function Employees() {
     setIsEditModalOpen(true);
   };
 
-  // NEW: Clean parser that simply splits by commas without chopping digits
-  // NEW: Parses contacts and restores leading zero if stripped by the database
   const parseContacts = (contactData) => {
     if (!contactData) return [];
     return String(contactData).split(',').map(c => {
       let numStr = c.trim();
-      // If the number is exactly 10 digits and starts with '9', restore the '0'
       if (numStr.length === 10 && numStr.startsWith('9')) {
         numStr = '0' + numStr;
       }
@@ -138,7 +136,6 @@ function Employees() {
     setContactListModalOpen(true);
   };
 
-  // NEW: Strict Contact Validations
   const handleAddContact = () => {
     const num = newContactNum.trim();
     if (!num) return;
@@ -177,13 +174,11 @@ function Employees() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // 1. Validate Contacts
     if (!formData.Contact_Num) {
       alert('Please add at least one valid 11-digit contact number starting with "09".');
       return;
     }
 
-    // 2. Validate Driver-Specific Fields
     if (formData.Role_ID === 'D') {
       if (!formData.License_Num || formData.License_Num.trim() === '') {
         alert('Validation Error: Drivers must have a valid License Number.');
@@ -208,7 +203,6 @@ function Employees() {
         }
         fetchData(); 
         setIsModalOpen(false); 
-        // Reset form completely
         setFormData({ Emp_ID: '', Emp_FName: '', Emp_LName: '', Role_ID: 'R', Contact_Num: '', License_Num: '', License_Exp: '', Password: '' }); 
         setAddPhotoPreview(null);
       } else {
@@ -224,13 +218,11 @@ function Employees() {
   const handleUpdateSubmit = async (e) => {
     e.preventDefault();
     
-    // 1. Validate Contacts
     if (!draftEmployeeEdits.Contact_Num) {
       alert('Please ensure the employee has at least one valid 11-digit contact number starting with "09".');
       return;
     }
 
-    // 2. Validate Driver-Specific Fields
     if (draftEmployeeEdits.Role_ID === 'D') {
       if (!draftEmployeeEdits.License_Num || draftEmployeeEdits.License_Num.trim() === '') {
         alert('Validation Error: Drivers must have a valid License Number.');
@@ -265,30 +257,41 @@ function Employees() {
     }
   };
 
-  const handleDelete = async (id) => {
-    const isConfirmed = window.confirm('Are you sure you want to remove this employee?');
+  const handleArchive = async (id) => {
+    const isConfirmed = window.confirm('Are you sure you want to archive this employee?');
     if (!isConfirmed) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/employee/${id}`, { method: 'DELETE' });
+      const response = await fetch(`http://localhost:5000/api/employee/${id}/archive`, { method: 'PUT' });
       if (response.ok) {
         fetchData();
         setSelectedEmployeeIds(selectedEmployeeIds.filter(empId => empId !== id));
       } else {
         const err = await response.json();
-        alert(`Delete failed: ${err.error || err.details}`);
+        alert(`Archive failed: ${err.error || err.details}`);
       }
     } catch (error) {
-      console.error('Error deleting employee:', error);
+      console.error('Error archiving employee:', error);
     }
   };
 
-  const handleBatchDelete = async () => {
-    if (!window.confirm(`Delete ${selectedEmployeeIds.length} employees?`)) return;
+  const handleRestore = async (id) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/employee/${id}/restore`, { method: 'PUT' });
+      if (response.ok) {
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Error restoring employee:', error);
+    }
+  };
+
+  const handleBatchArchive = async () => {
+    if (!window.confirm(`Archive ${selectedEmployeeIds.length} employees?`)) return;
     for (const id of selectedEmployeeIds) {
       try {
-        await fetch(`http://localhost:5000/api/employee/${id}`, { method: 'DELETE' });
+        await fetch(`http://localhost:5000/api/employee/${id}/archive`, { method: 'PUT' });
       } catch (error) {
-        console.error(`Error deleting ${id}:`, error);
+        console.error(`Error archiving ${id}:`, error);
       }
     }
     setSelectedEmployeeIds([]);
@@ -351,6 +354,12 @@ function Employees() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('activeEmployee');
+    window.location.href = '/login'; 
+  };
+
   const handleRibbonNavigation = (menuName) => {
     if (menuName === 'Transaction') navigate('/transaction');
     else if (menuName === 'Barangay') navigate('/barangay');
@@ -401,6 +410,10 @@ function Employees() {
               </button>
             );
           })}
+          <div style={styles.navDivider}></div>
+          <button onClick={handleLogout} style={styles.signOutButton}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </nav>
 
@@ -436,16 +449,27 @@ function Employees() {
               </div>
             </div>
 
-            <button onClick={() => setIsModalOpen(true)} style={styles.addPrimaryActionButton}>
-              <Plus size={16} /> Add Employee
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <button 
+                onClick={() => setViewMode(viewMode === 'Active' ? 'Archived' : 'Active')} 
+                style={{...styles.archiveToggleBtn, backgroundColor: viewMode === 'Archived' ? '#f1f5f9' : '#ffffff'}}
+              >
+                <Archive size={16} /> {viewMode === 'Active' ? 'View Archived' : 'Back to Active'}
+              </button>
+
+              {viewMode === 'Active' && (
+                <button onClick={() => setIsModalOpen(true)} style={styles.addPrimaryActionButton}>
+                  <Plus size={16} /> Add Employee
+                </button>
+              )}
+            </div>
           </div>
 
-          {selectedEmployeeIds.length > 0 && (
+          {selectedEmployeeIds.length > 0 && viewMode === 'Active' && (
             <div style={styles.batchActionAlertStrip}>
               <span style={styles.batchSelectionCountLabel}>{selectedEmployeeIds.length} Selected</span>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleBatchDelete} style={styles.batchDeleteActionButton}>Delete Selected</button>
+                <button onClick={handleBatchArchive} style={styles.batchDeleteActionButton}>Archive Selected</button>
                 <button onClick={() => setSelectedEmployeeIds([])} style={styles.batchCancelActionButton}>Cancel</button>
               </div>
             </div>
@@ -456,10 +480,12 @@ function Employees() {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
-                    <input type="checkbox" onChange={handleToggleAll} checked={selectedEmployeeIds.length === filteredEmployees.length && filteredEmployees.length > 0} style={styles.tableBodyCheckboxInput} />
-                  </th>
-                  <th style={{ ...styles.tableHeaderColumnCell, width: '80px' }}>ID</th>
+                  {viewMode === 'Active' && (
+                    <th style={{ ...styles.tableHeaderColumnCell, width: '40px', textAlign: 'center' }}>
+                      <input type="checkbox" onChange={handleToggleAll} checked={selectedEmployeeIds.length === filteredEmployees.length && filteredEmployees.length > 0} style={styles.tableBodyCheckboxInput} />
+                    </th>
+                  )}
+                  <th style={{ ...styles.tableHeaderColumnCell, width: '80px', paddingLeft: viewMode === 'Archived' ? '20px' : '0' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '220px' }}>NAME</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>ROLE</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CONTACT</th>
@@ -473,17 +499,18 @@ function Employees() {
                 ) : filteredEmployees.length > 0 ? (
                   filteredEmployees.map((emp) => (
                     <tr key={emp.Emp_ID} style={styles.tableBodyDataRow}>
-                      <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
-                        <input type="checkbox" checked={selectedEmployeeIds.includes(emp.Emp_ID)} onChange={() => handleToggleSingle(emp.Emp_ID)} style={styles.tableBodyCheckboxInput} />
-                      </td>
-                      <td style={styles.tableBodyCellBlock}><strong>{emp.Emp_ID}</strong></td>
+                      {viewMode === 'Active' && (
+                        <td style={{ ...styles.tableBodyCellBlock, textAlign: 'center' }}>
+                          <input type="checkbox" checked={selectedEmployeeIds.includes(emp.Emp_ID)} onChange={() => handleToggleSingle(emp.Emp_ID)} style={styles.tableBodyCheckboxInput} />
+                        </td>
+                      )}
+                      <td style={{...styles.tableBodyCellBlock, paddingLeft: viewMode === 'Archived' ? '20px' : '0'}}><strong>{emp.Emp_ID}</strong></td>
                       <td style={styles.tableBodyCellBlock}>{emp.Emp_FName} {emp.Emp_LName}</td>
                       <td style={styles.tableBodyCellBlock}>
                          <span style={{ ...styles.typeBadge, backgroundColor: emp.Role_ID === 'D' ? '#e0e7ff' : '#dcfce7', color: emp.Role_ID === 'D' ? '#3730a3' : '#166534' }}>
                            {emp.Role_ID === 'D' ? 'Driver' : 'Refiller'}
                          </span>
                       </td>
-                      {/* Uses the safe parseContacts array to display the first item only */}
                       <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>
                          {parseContacts(emp.Contact_Num)[0] || 'N/A'}
                       </td>
@@ -492,8 +519,16 @@ function Employees() {
                       </td>
                       <td style={styles.tableBodyCellBlock}>
                         <div style={styles.inlineActionButtonsFlexGroup}>
-                          <button onClick={() => openEditModal(emp)} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
-                          <button onClick={() => handleDelete(emp.Emp_ID)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
+                          {viewMode === 'Active' ? (
+                            <>
+                              <button onClick={() => openEditModal(emp)} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
+                              <button onClick={() => handleArchive(emp.Emp_ID)} style={styles.inlineRowArchiveButton} title="Archive"><Archive size={16} /></button>
+                            </>
+                          ) : (
+                            <button onClick={() => handleRestore(emp.Emp_ID)} style={styles.inlineRowRestoreButton} title="Restore">
+                               <RotateCcw size={16} /> Restore
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -564,9 +599,9 @@ function Employees() {
                 
                 <div style={styles.dividerLine}></div>
 
-                <div style={styles.detailItem}><span style={styles.detailLabel}>Base Salary:</span> <span style={styles.detailValue}>₱{selectedEmp.Salary || 0}</span></div>
+                <div style={styles.detailItem}><span style={styles.detailLabel}>Base Salary:</span> <span style={styles.detailValue}>₱ {selectedEmp.Salary || 0}</span></div>
                 <div style={styles.detailItem}><span style={styles.detailLabel}>Daily Quota:</span> <span style={styles.detailValue}>{selectedEmp.Quota || 0}</span></div>
-                <div style={styles.detailItem}><span style={styles.detailLabel}>Incentive Rate:</span> <span style={styles.detailValue}>₱{selectedEmp.Incentive_Rate || 0}</span></div>
+                <div style={styles.detailItem}><span style={styles.detailLabel}>Incentive Rate:</span> <span style={styles.detailValue}>₱ {selectedEmp.Incentive_Rate || 0}</span></div>
               </div>
             </div>
 
@@ -605,7 +640,6 @@ function Employees() {
 
             {contactModalTarget !== 'view' && (
               <div style={styles.addContactRow}>
-                 {/* STRIPPED INPUT: Enforces maximum length and strips letters/symbols as you type */}
                  <input 
                     type="text" 
                     maxLength="11"
@@ -745,9 +779,9 @@ function Employees() {
                     <div style={styles.dynamicRoleSummaryCard}>
                       <div style={styles.dynamicRoleHeader}><Info size={14} color="#0077b6" /><span style={styles.dynamicRoleTitle}>Role Details</span></div>
                       <div style={styles.dynamicRoleGrid}>
-                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Base Salary</span><span style={styles.dynamicRoleValue}>₱{roleDataMap[formData.Role_ID].Salary}</span></div>
+                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Base Salary</span><span style={styles.dynamicRoleValue}>₱ {roleDataMap[formData.Role_ID].Salary}</span></div>
                         <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Daily Quota</span><span style={styles.dynamicRoleValue}>{roleDataMap[formData.Role_ID].Quota}</span></div>
-                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Incentive</span><span style={styles.dynamicRoleValue}>₱{roleDataMap[formData.Role_ID].Incentive_Rate}</span></div>
+                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Incentive</span><span style={styles.dynamicRoleValue}>₱ {roleDataMap[formData.Role_ID].Incentive_Rate}</span></div>
                       </div>
                     </div>
                   )}
@@ -842,9 +876,9 @@ function Employees() {
                     <div style={styles.dynamicRoleSummaryCard}>
                       <div style={styles.dynamicRoleHeader}><Info size={14} color="#0077b6" /><span style={styles.dynamicRoleTitle}>Role Details</span></div>
                       <div style={styles.dynamicRoleGrid}>
-                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Base Salary</span><span style={styles.dynamicRoleValue}>₱{roleDataMap[draftEmployeeEdits.Role_ID].Salary}</span></div>
+                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Base Salary</span><span style={styles.dynamicRoleValue}>₱ {roleDataMap[draftEmployeeEdits.Role_ID].Salary}</span></div>
                         <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Daily Quota</span><span style={styles.dynamicRoleValue}>{roleDataMap[draftEmployeeEdits.Role_ID].Quota}</span></div>
-                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Incentive</span><span style={styles.dynamicRoleValue}>₱{roleDataMap[draftEmployeeEdits.Role_ID].Incentive_Rate}</span></div>
+                        <div style={styles.dynamicRoleItem}><span style={styles.dynamicRoleLabel}>Incentive</span><span style={styles.dynamicRoleValue}>₱ {roleDataMap[draftEmployeeEdits.Role_ID].Incentive_Rate}</span></div>
                       </div>
                     </div>
                   )}
@@ -873,6 +907,8 @@ const styles = {
   brandSubTitle: { color: '#00b4d8', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '1px' },
   navMenuLinksRow: { display: 'flex', height: '100%', alignItems: 'center', gap: '4px' },
   navMenuButton: { background: 'none', border: 'none', height: '100%', padding: '0 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease' },
+  navDivider: { width: '2px', height: '24px', backgroundColor: '#00b4d8', margin: '0 10px', opacity: 0.5 },
+  signOutButton: { backgroundColor: '#ef4444', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' },
   workspaceBodyWrapper: { flex: 1, overflowY: 'auto', backgroundColor: '#e6f2fa', padding: '20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
   dataLogTableCanvasCard: { backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #bde0fe', padding: '30px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)', height: 'calc(100vh - 110px)', width: '100%', overflow: 'hidden' },
   
@@ -881,14 +917,15 @@ const styles = {
   searchLeftIcon: { position: 'absolute', left: '16px', pointerEvents: 'none' },
   searchFieldInput: { width: '100%', padding: '12px 16px 12px 46px', borderRadius: '8px', border: '1px solid #bde0fe', backgroundColor: '#eaf4fc', color: '#012a4a', fontSize: '0.95rem', outline: 'none', boxSizing: 'border-box' },
   
+  archiveToggleBtn: { border: '1px solid #cbd5e1', color: '#475569', borderRadius: '8px', padding: '12px 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
   dropdownSelectContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
   nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
   dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
 
   addPrimaryActionButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.2)' },
-  batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffe3e3', border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
-  batchSelectionCountLabel: { color: '#b91c1c', fontWeight: '700', fontSize: '0.95rem' },
-  batchDeleteActionButton: { backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' },
+  batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fef3c7', border: '1px solid #fcd34d', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
+  batchSelectionCountLabel: { color: '#b45309', fontWeight: '700', fontSize: '0.95rem' },
+  batchDeleteActionButton: { backgroundColor: '#f59e0b', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' },
   batchCancelActionButton: { backgroundColor: '#ffffff', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer' },
   ledgerTableMarkup: { width: '100%', borderCollapse: 'collapse', textAlign: 'left', tableLayout: 'fixed' },
   tableHeadBorderRow: { borderBottom: '2px solid #bde0fe' },
@@ -902,7 +939,8 @@ const styles = {
   seeMoreButton: { backgroundColor: 'transparent', color: '#0077b6', border: '1px solid #0077b6', borderRadius: '6px', padding: '6px 12px', fontSize: '0.82rem', fontWeight: '700', cursor: 'pointer' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
   inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  inlineRowArchiveButton: { backgroundColor: '#fef3c7', border: 'none', borderRadius: '6px', color: '#f59e0b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
+  inlineRowRestoreButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' },
   
   modalOverlayMask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
   
