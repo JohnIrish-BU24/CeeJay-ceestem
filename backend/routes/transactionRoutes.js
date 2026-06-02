@@ -8,5 +8,8 @@ router.get('/', transactionController.getTransactionHistory);
 router.post('/', transactionController.createTransaction);
 router.delete('/:id', transactionController.deleteTransaction);
 router.put('/:id', transactionController.updateTransaction);
+router.get('/today', transactionController.getTodayTransactions);
+router.get('/check-customer/:custID', transactionController.checkCustomerExists);
+router.delete('/:id', transactionController.deleteTransaction);
 
 module.exports = router;

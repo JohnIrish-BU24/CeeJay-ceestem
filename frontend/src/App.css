@@ -183,6 +183,19 @@
   }
 }
 
+/* 📍 Hide the default up/down arrows on number inputs (Chrome, Safari, Edge) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 📍 Hide the arrows in Firefox */
+input[type="number"] {
+  -moz-appearance: textfield; /* Keeps older Firefox happy */
+  appearance: textfield;      /* Keeps VS Code and modern browsers happy! */
+}
+
 .custom-checkbox {
   appearance: none;          /* Removes the default browser styling */
   -webkit-appearance: none;
