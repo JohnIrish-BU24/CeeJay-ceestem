@@ -1,12 +1,55 @@
 const db = require('../config/db');
 
-// 1. Get a comprehensive Transaction Status Log (Combines Record, Detail, and Customer)
+// ==========================================
+// 5-YEAR AUTO-DELETE CLEANUP ROUTINE
+// ==========================================
+const autoDeleteTrash = async () => {
+    const connection = await db.getConnection();
+    try {
+        await connection.beginTransaction();
+        
+        // Find ALL transactions strictly older than 5 years
+        const [rows] = await connection.query(`
+            SELECT Trans_ID FROM TRANS_RECORD 
+            WHERE Trans_Date < NOW() - INTERVAL 5 YEAR
+        `);
+        
+        if (rows.length > 0) {
+            const ids = rows.map(r => r.Trans_ID);
+            const placeholders = ids.map(() => '?').join(',');
+            
+            // Delete dependent records first to avoid Foreign Key constraint errors
+            await connection.query(`DELETE FROM TRANS_DETAIL WHERE Trans_ID IN (${placeholders})`, ids);
+            await connection.query(`DELETE FROM WORK_DETAIL WHERE Trans_ID IN (${placeholders})`, ids);
+            
+            // Delete master record last
+            await connection.query(`DELETE FROM TRANS_RECORD WHERE Trans_ID IN (${placeholders})`, ids);
+            
+            console.log(`[SYSTEM] Auto-deleted ${ids.length} transactions older than 5 years.`);
+        }
+        await connection.commit();
+    } catch (error) {
+        await connection.rollback();
+        console.error("[SYSTEM] Auto-delete error:", error);
+    } finally {
+        connection.release();
+    }
+};
+
+// 1. Get a comprehensive Transaction Status Log
 exports.getTransactionHistory = async (req, res) => {
-    const { search, dateRange } = req.query; 
+    // Run the cleanup routine before fetching data
+    await autoDeleteTrash();
+
+    const { search, dateRange, status } = req.query; 
+    
+    // MAP FRONTEND STATUS TO DATABASE CONSTRAINTS
+    const dbStatus = status === 'Archived' ? 'Voided' : 'Valid'; 
+
     try {
         let queryText = `
             SELECT 
-                tr.Trans_ID, tr.Trans_Date, tr.Remarks,
+                tr.Trans_ID, tr.Trans_Date, tr.Remarks, tr.Status,
                 CONCAT(c.Cust_LName, ', ', c.Cust_FName) AS Customer,
                 sd.Serv_Name,
                 MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
@@ -21,33 +64,37 @@ exports.getTransactionHistory = async (req, res) => {
         `;
 
         const queryParams = [];
+        let whereClauses = [`tr.Status = ?`];
+        queryParams.push(dbStatus);
         
         // Search Function
         if (search && search.trim() !== "") {
-            queryText += ` WHERE (c.Cust_LName LIKE ? OR c.Cust_FName LIKE ? OR tr.Trans_ID LIKE ?) `;
+            whereClauses.push(`(c.Cust_LName LIKE ? OR c.Cust_FName LIKE ? OR tr.Trans_ID LIKE ?)`);
             queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
         }
 
         // Filter Date Function
         if (dateRange && dateRange !== 'All Time') {
-            const dateClause = (search && search.trim() !== "") ? ` AND ` : ` WHERE `;
-            let interval = '';
-            
-            // Ensure these match your frontend <option> values EXACTLY
-            if (dateRange === 'Last Week') interval = 'INTERVAL 1 WEEK';
-            else if (dateRange === 'Last Month') interval = 'INTERVAL 1 MONTH';
-            else if (dateRange === 'Last 3 Months') interval = 'INTERVAL 3 MONTH';
-            else if (dateRange === 'Last Year') interval = 'INTERVAL 1 YEAR';
-
-            // Safety: Only append if we successfully mapped an interval
-            if (interval !== '') {
-                queryText += `${dateClause} tr.Trans_Date >= DATE_SUB(NOW(), ${interval}) `;
+            if (dateRange === 'Last Week') {
+                whereClauses.push(`tr.Trans_Date >= DATE_SUB(NOW(), INTERVAL 1 WEEK)`);
+            } else if (dateRange === 'Last Month') {
+                whereClauses.push(`tr.Trans_Date >= DATE_SUB(NOW(), INTERVAL 1 MONTH)`);
+            } else if (dateRange === 'Last 3 Months') {
+                whereClauses.push(`tr.Trans_Date >= DATE_SUB(NOW(), INTERVAL 3 MONTH)`);
+            } else if (dateRange === 'Last Year') {
+                // Strictly limits to transactions exactly within the last 365 days from today
+                whereClauses.push(`tr.Trans_Date >= DATE_SUB(CURDATE(), INTERVAL 1 YEAR) AND tr.Trans_Date <= NOW()`);
             }
+        }
+
+        // Combine all WHERE clauses
+        if (whereClauses.length > 0) {
+            queryText += ` WHERE ` + whereClauses.join(' AND ');
         }
 
         queryText += `
             GROUP BY tr.Trans_ID, tr.Trans_Date, c.Cust_LName, c.Cust_FName, 
-                     sd.Serv_Name, td.Quantity, td.Selling_Price, tr.Remarks
+                     sd.Serv_Name, td.Quantity, td.Selling_Price, tr.Remarks, tr.Status
             ORDER BY tr.Trans_Date DESC
         `;
 
@@ -58,31 +105,18 @@ exports.getTransactionHistory = async (req, res) => {
     }
 };
 
-// 2. Process a complete Transaction (Creates the master record and the itemized lines)
-// 2. Process a complete Transaction (Creates the master record and the itemized lines)
+// 2. Process a complete Transaction
 exports.createTransaction = async (req, res) => {
-    // ==========================================
-    // ---> STEP 3a: ADD roleID TO THIS LIST <---
-    // ==========================================
     const { Trans_ID, Trans_Date, Remarks, items, customer, empID, roleID, refillerEmpID } = req.body;
     
     const connection = await db.getConnection();
     try {
         await connection.beginTransaction();
 
-        // ==========================================
-        // 1. FIND OR CREATE BARANGAY LOGIC
-        // ==========================================
         let finalBarangayID = customer.Barangay_ID;
-        
-        // Force conversion and clean up inputs
         const bName = customer.Barangay_Name ? customer.Barangay_Name.trim() : null;
         const pNum = customer.Purok ? parseInt(customer.Purok) : null;
 
-        // Log exactly what the backend sees
-        console.log("DEBUG: Processing Barangay. Name:", bName, "Purok:", pNum);
-
-        // Only proceed if we have valid data and need an ID
         if (!finalBarangayID) {
             if (bName !== null && pNum !== null && !isNaN(pNum)) {
                 const [rows] = await connection.query(
@@ -92,39 +126,28 @@ exports.createTransaction = async (req, res) => {
 
                 if (rows.length > 0) {
                     finalBarangayID = rows[0].Barangay_ID;
-                    console.log("DEBUG: Found existing ID:", finalBarangayID);
                 } else {
                     finalBarangayID = 'B' + Math.random().toString(36).substring(2, 5).toUpperCase();
-                    console.log("DEBUG: Creating new Barangay ID:", finalBarangayID);
-                    
                     await connection.query(
                         "INSERT INTO BARANGAY (Barangay_ID, Barangay_Name, Purok) VALUES (?, ?, ?)",
                         [finalBarangayID, bName, pNum]
                     );
                 }
             } else {
-                // The frontend sent empty or invalid strings
                 throw new Error(`Invalid Barangay Data from frontend: Name='${bName}', Purok='${pNum}'`);
             }
         }
 
-        // ==========================================
-        // 2. FAIL-SAFE VALIDATION
-        // ==========================================
         if (!finalBarangayID) {
             throw new Error("Validation Error: Could not assign a valid Barangay_ID.");
         }
 
-        // ==========================================
-        // 3 & 4. CHECK AND INSERT/UPDATE CUSTOMER
-        // ==========================================
         const [existingCust] = await connection.query(
             "SELECT Cust_ID FROM CUSTOMER WHERE Cust_ID = ?", 
             [customer.Cust_ID]
         );
 
         if (existingCust.length === 0) {
-            // NEW CUSTOMER: Insert them
             await connection.query(
                 `INSERT INTO CUSTOMER (Cust_ID, Barangay_ID, Cust_LName, Cust_FName, Cust_Type) 
                  VALUES (?, ?, ?, ?, ?)`,
@@ -138,16 +161,12 @@ exports.createTransaction = async (req, res) => {
                 );
             }
         } else {
-            // 📍 THE FIX: EXISTING CUSTOMER - Update their profile with the new form inputs!
-            console.log("DEBUG: Existing customer detected. Updating their profile.");
-            
             await connection.query(
                 'UPDATE CUSTOMER SET Cust_Type = ? WHERE Cust_ID = ?',
                 [customer.Cust_Type, customer.Cust_ID]
             );
 
             if (customer.Contact_Nums && customer.Contact_Nums.length > 0) {
-                // Clear old numbers and save the newly entered ones
                 await connection.query('DELETE FROM CUSTOMER_NUM WHERE Cust_ID = ?', [customer.Cust_ID]);
                 for (let num of customer.Contact_Nums) {
                     await connection.query(
@@ -158,18 +177,12 @@ exports.createTransaction = async (req, res) => {
             }
         }
 
-        // ==========================================
-        // 5. INSERT INTO TRANS_RECORD
-        // ==========================================
         await connection.query(
             `INSERT INTO TRANS_RECORD (Trans_ID, Cust_ID, Trans_Date, Remarks) 
              VALUES (?, ?, ?, ?)`,
             [Trans_ID, customer.Cust_ID, Trans_Date, Remarks]
         );
 
-        // ==========================================
-        // 6. INSERT INTO TRANS_DETAIL
-        // ==========================================
         for (let item of items) {
             await connection.query(
                 `INSERT INTO TRANS_DETAIL (Trans_Detail_ID, Serv_ID, Trans_ID, Quantity, Selling_Price, Promo) 
@@ -178,16 +191,11 @@ exports.createTransaction = async (req, res) => {
             );
         }
 
-        // ==========================================
-        // 7. INSERT INTO WORK_DETAIL
-        // ==========================================
-        // First, log the employee doing the transaction (e.g., The Driver)
         await connection.query(
             `INSERT INTO WORK_DETAIL (Trans_ID, Emp_ID, Role_ID) VALUES (?, ?, ?)`,
             [Trans_ID, empID, roleID]
         );
 
-        // 📍 SECOND INSERT: If the Driver assigned a Refiller, save them to the same transaction!
         if (refillerEmpID) {
             await connection.query(
                 `INSERT INTO WORK_DETAIL (Trans_ID, Emp_ID, Role_ID) VALUES (?, ?, 'R')`,
@@ -207,6 +215,93 @@ exports.createTransaction = async (req, res) => {
     }
 };
 
+// Update strictly reserved for Status (Paid/Unpaid)
+exports.updateTransaction = async (req, res) => {
+    const { id } = req.params; 
+    const form = req.body;     
+    
+    try {
+        const newStatus = form.status.charAt(0).toUpperCase() + form.status.slice(1);
+        await db.query(
+            'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', 
+            [newStatus, id]
+        );
+        res.json({ message: "Transaction payment status updated" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+};
+
+exports.getTodayTransactions = async (req, res) => {
+    try {
+        const queryText = `
+            SELECT 
+                tr.Trans_ID, tr.Trans_Date, tr.Remarks, tr.Status,
+                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type,
+                b.Purok, b.Barangay_Name,
+                GROUP_CONCAT(DISTINCT cn.Contact_Num SEPARATOR ', ') AS Contact_Nums, 
+                sd.Serv_Name,
+                MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
+                MAX(CASE WHEN wd.Role_ID = 'D' THEN e.Emp_LName END) AS Driver,
+                td.Quantity, td.Selling_Price
+            FROM TRANS_RECORD tr
+            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
+            LEFT JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
+            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
+            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
+            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
+            JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
+            JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
+            WHERE DATE(tr.Trans_Date) = CURDATE() AND tr.Status = 'Valid'
+            GROUP BY 
+                tr.Trans_ID, tr.Trans_Date, tr.Remarks, tr.Status,
+                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, 
+                b.Purok, b.Barangay_Name,
+                sd.Serv_Name, td.Quantity, td.Selling_Price
+            ORDER BY tr.Trans_Date DESC
+        `;
+        const [rows] = await db.query(queryText);
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({ error: "Failed to retrieve today's logs", details: error.message });
+    }
+};
+
+exports.checkCustomerExists = async (req, res) => {
+    const { custID } = req.params;
+    try {
+        const [rows] = await db.query('SELECT Cust_ID FROM CUSTOMER WHERE Cust_ID = ?', [custID]);
+        res.status(200).json({ exists: rows.length > 0 });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to check database." });
+    }
+};
+
+// ==========================================
+// Trash (Void) and Restore (Valid) Logic
+// ==========================================
+
+exports.archiveTransaction = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query("UPDATE TRANS_RECORD SET Status = 'Voided' WHERE Trans_ID = ?", [id]);
+        res.json({ message: "Transaction moved to Trash Bin." });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to move transaction to trash." });
+    }
+};
+
+exports.restoreTransaction = async (req, res) => {
+    const { id } = req.params;
+    try {
+        await db.query("UPDATE TRANS_RECORD SET Status = 'Valid' WHERE Trans_ID = ?", [id]);
+        res.json({ message: "Transaction successfully restored." });
+    } catch (error) {
+        res.status(500).json({ error: "Failed to restore transaction." });
+    }
+};
+
+// Hard Delete Route implementation for manual bypass if ever needed
 exports.deleteTransaction = async (req, res) => {
     const { id } = req.params;
     const connection = await db.getConnection();
@@ -224,140 +319,3 @@ exports.deleteTransaction = async (req, res) => {
         connection.release();
     }
 };
-
-exports.deleteAllTransactions = async (req, res) => {
-    const { password } = req.body;
-    console.log("Attempting to clear all. Password received:", password);
-
-    if (password !== "ceestem123") {
-        console.error("Auth Failed: Incorrect password.");
-        return res.status(403).json({ error: "Invalid password." });
-    }
-
-    const connection = await db.getConnection();
-    try {
-        console.log("Starting deletion...");
-        await connection.query('SET FOREIGN_KEY_CHECKS = 0');
-        
-        // Explicitly delete in order
-        await connection.query('DELETE FROM TRANS_DETAIL');
-        await connection.query('DELETE FROM WORK_DETAIL');
-        await connection.query('DELETE FROM TRANS_RECORD');
-        
-        await connection.query('SET FOREIGN_KEY_CHECKS = 1');
-        console.log("Database cleared successfully.");
-        
-        res.status(200).json({ message: "All records cleared successfully." });
-    } catch (err) {
-        console.error("Database deletion failed:", err);
-        await connection.query('SET FOREIGN_KEY_CHECKS = 1').catch(() => {});
-        res.status(500).json({ error: "Server Error: " + err.message });
-    } finally {
-        connection.release();
-    }
-};
-
-exports.updateTransaction = async (req, res) => {
-    const { id } = req.params; // Trans_ID
-    const form = req.body;     // The entire form payload from frontend
-    
-    console.log("Updating Trans ID:", id);
-
-    const connection = await db.getConnection();
-    try {
-        await connection.beginTransaction();
-
-        // 1. Update TRANS_RECORD (Status/Remarks)
-        const newStatus = form.status.charAt(0).toUpperCase() + form.status.slice(1);
-        await connection.query(
-            'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', 
-            [newStatus, id]
-        );
-        
-        // 2. Update TRANS_DETAIL (Service Type, Quantity, Amount)
-        const servID = form.serviceType === 'delivery' ? 2 : 1; // 1=Walk-in, 2=Delivery
-        const promoVal = form.quantity >= 10 ? 'Yes' : 'No';
-        await connection.query(
-            'UPDATE TRANS_DETAIL SET Serv_ID = ?, Quantity = ?, Selling_Price = ?, Promo = ? WHERE Trans_ID = ?',
-            [servID, form.quantity, form.total, promoVal, id]
-        );
-
-        // 3. Update CUSTOMER (Customer Type)
-        if (form.custID) {
-            await connection.query(
-                'UPDATE CUSTOMER SET Cust_Type = ? WHERE Cust_ID = ?',
-                [form.customerType, form.custID]
-            );
-
-            // 4. Update CUSTOMER_NUM (Contact Numbers)
-            if (form.contactNums && form.contactNums.length > 0) {
-                // Clear old numbers and insert the new ones
-                await connection.query('DELETE FROM CUSTOMER_NUM WHERE Cust_ID = ?', [form.custID]);
-                for (let num of form.contactNums) {
-                    if (num.trim() !== '') {
-                        await connection.query(
-                            'INSERT INTO CUSTOMER_NUM (Cust_ID, Contact_Num) VALUES (?, ?)',
-                            [form.custID, num.trim()]
-                        );
-                    }
-                }
-            }
-        }
-
-        await connection.commit();
-        res.json({ message: "Transaction and Customer successfully updated" });
-    } catch (err) {
-        await connection.rollback();
-        console.error("SQL ERROR:", err); 
-        res.status(500).json({ error: err.message });
-    } finally {
-        connection.release();
-    }
-};
-
-exports.getTodayTransactions = async (req, res) => {
-    try {
-        const queryText = `
-            SELECT 
-                tr.Trans_ID, tr.Trans_Date, tr.Remarks,
-                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type,
-                b.Purok, b.Barangay_Name,
-                GROUP_CONCAT(DISTINCT cn.Contact_Num SEPARATOR ', ') AS Contact_Nums, 
-                sd.Serv_Name,
-                MAX(CASE WHEN wd.Role_ID = 'R' THEN e.Emp_LName END) AS Refiller,
-                MAX(CASE WHEN wd.Role_ID = 'D' THEN e.Emp_LName END) AS Driver,
-                td.Quantity, td.Selling_Price
-            FROM TRANS_RECORD tr
-            JOIN CUSTOMER c ON tr.Cust_ID = c.Cust_ID
-            LEFT JOIN BARANGAY b ON c.Barangay_ID = b.Barangay_ID
-            LEFT JOIN CUSTOMER_NUM cn ON c.Cust_ID = cn.Cust_ID
-            JOIN TRANS_DETAIL td ON tr.Trans_ID = td.Trans_ID
-            JOIN SERVICE_DETAIL sd ON td.Serv_ID = sd.Serv_ID
-            JOIN WORK_DETAIL wd ON tr.Trans_ID = wd.Trans_ID
-            JOIN EMPLOYEE e ON wd.Emp_ID = e.Emp_ID
-            WHERE DATE(tr.Trans_Date) = CURDATE()
-            GROUP BY 
-                tr.Trans_ID, tr.Trans_Date, tr.Remarks, 
-                c.Cust_ID, c.Cust_LName, c.Cust_FName, c.Cust_Type, 
-                b.Purok, b.Barangay_Name,
-                sd.Serv_Name, td.Quantity, td.Selling_Price
-            ORDER BY tr.Trans_Date DESC
-        `;
-        const [rows] = await db.query(queryText);
-        res.json(rows);
-    } catch (error) {
-        console.error("Fetch Error:", error);
-        res.status(500).json({ error: "Failed to retrieve today's logs", details: error.message });
-    }
-};
-
-exports.checkCustomerExists = async (req, res) => {
-    const { custID } = req.params;
-    try {
-        const [rows] = await db.query('SELECT Cust_ID FROM CUSTOMER WHERE Cust_ID = ?', [custID]);
-        res.status(200).json({ exists: rows.length > 0 });
-    } catch (error) {
-        res.status(500).json({ error: "Failed to check database." });
-    }
-};
-

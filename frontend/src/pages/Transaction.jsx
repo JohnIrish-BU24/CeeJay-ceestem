@@ -1,28 +1,29 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, Edit2, Trash2, Plus, X } from 'lucide-react';
+import { Search, ChevronDown, Trash2, X, RotateCcw, LogOut, Trash, Info, Edit, Check } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-function Transaction({ onLogout }) {
+function Transaction() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentPath = location.pathname;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('All Time');
-  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
+  const [viewMode, setViewMode] = useState('Active'); 
   
   const [selectedIds, setSelectedIds] = useState([]);
-  
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState(null);
-
   const [dbTransactions, setDbTransactions] = useState([]);
+  
+  // New states for editing and tooltips
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [editingStatus, setEditingStatus] = useState('');
+  const [showNoticeTooltip, setShowNoticeTooltip] = useState(false);
 
-  const fetchTransactions = async (query = '', range = 'All Time') => {
+  const fetchTransactions = async (query = '', range = 'All Time', mode = 'Active') => {
     try {
-        const url = `http://localhost:5000/api/transaction/?search=${encodeURIComponent(query.trim())}&dateRange=${encodeURIComponent(range.trim())}`;
+        const statusParam = mode === 'Trash' ? 'Archived' : 'Active'; 
+        const url = `http://localhost:5000/api/transaction/?search=${encodeURIComponent(query.trim())}&dateRange=${encodeURIComponent(range.trim())}&status=${statusParam}`;
         const response = await fetch(url);
         const data = await response.json();
       
@@ -35,22 +36,22 @@ function Transaction({ onLogout }) {
         qty: tx.Quantity || 0,
         amount: parseFloat(tx.Selling_Price) || 0,
         service: tx.Serv_Name || 'No',
-        status: tx.Remarks
+        status: tx.Remarks || 'Unpaid' // Defaulting to Unpaid if empty, adjust as needed
       }));
       setDbTransactions(formatted);
     } catch (err) { console.error(err); }
   };
 
   useEffect(() => {
-    fetchTransactions(searchQuery, dateFilter);
+    fetchTransactions(searchQuery, dateFilter, viewMode);
   }, []);
 
   useEffect(() => {
       const handler = setTimeout(() => {
-          fetchTransactions(searchQuery, dateFilter);
-      }, 200);
+          fetchTransactions(searchQuery, dateFilter, viewMode);
+      }, 0);
       return () => clearTimeout(handler);
-  }, [searchQuery, dateFilter]);
+  }, [searchQuery, dateFilter, viewMode]);
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
@@ -67,97 +68,73 @@ function Transaction({ onLogout }) {
       setSelectedIds([...selectedIds, Trans_ID]);
     }
   };
-
-  const openEditModal = (tx) => {
-    const fullName = `${tx.lname || ''}, ${tx.fname || ''}`;
-    setEditingTransaction({ 
-        ...tx, 
-        name: fullName, 
-        Remarks: tx.status 
-    });
-    setIsEditModalOpen(true);
-  };
-
-  const handleModalSave = async (e) => {
-    e.preventDefault(); 
-    try {
-      const response = await fetch(`http://localhost:5000/api/transaction/${editingTransaction.Trans_ID}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          service: editingTransaction.service,
-          qty: editingTransaction.qty,
-          amount: editingTransaction.amount,
-          status: editingTransaction.status
-        })
-      });
-
-      if (!response.ok) throw new Error("Failed to update transaction");
-
-      setIsEditModalOpen(false);
-      fetchTransactions(); 
-    } catch (err) {
-      console.error("Update error:", err);
-      alert("Could not update transaction. Check console.");
-    }
-  };
   
-  const handleInlineDelete = async (Trans_ID) => {
-    if (!Trans_ID) {
-        alert("Error: Cannot delete, Trans_ID is missing!");
-        return;
-    }
-
-    const isConfirmed = window.confirm("Are you sure you want to delete this transaction? This action cannot be undone.");
-    if (!isConfirmed) return;
-
+  // NEW: Save Status Handler
+  const handleSaveStatus = async (Trans_ID) => {
     try {
-        const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}`, { 
-            method: 'DELETE' 
+        // Adjust this endpoint if your backend route for updating status is named differently.
+        // I am passing the status as "Remarks" based on your mapping.
+        const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}/status`, { 
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ Remarks: editingStatus })
         });
         
         if (response.ok) {
-            fetchTransactions(); 
+            setEditingRowId(null);
+            fetchTransactions(searchQuery, dateFilter, viewMode); 
         } else {
             const errorData = await response.json();
-            alert("Delete failed: " + (errorData.error || "Unknown error"));
+            alert("Failed to update status: " + (errorData.error || "Unknown error"));
         }
-    } catch (err) {
-        console.error("Network error:", err);
-        alert("Check your backend server!");
-    }
+    } catch (err) { console.error("Network error:", err); }
   };
 
-  const handleBatchDelete = async () => {
+  const handleMoveToTrash = async (Trans_ID) => {
+    if (!Trans_ID) return;
+    const isConfirmed = window.confirm("Move this transaction to the Trash Bin?");
+    if (!isConfirmed) return;
+
+    try {
+        const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}/archive`, { 
+            method: 'PUT' 
+        });
+        
+        if (response.ok) {
+            fetchTransactions(searchQuery, dateFilter, viewMode); 
+        } else {
+            const errorData = await response.json();
+            alert("Action failed: " + (errorData.error || "Unknown error"));
+        }
+    } catch (err) { console.error("Network error:", err); }
+  };
+
+  const handleRestore = async (Trans_ID) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}/restore`, { 
+          method: 'PUT' 
+      });
+      if (response.ok) {
+          fetchTransactions(searchQuery, dateFilter, viewMode); 
+      }
+    } catch (err) { console.error("Network error:", err); }
+  };
+
+  const handleBatchTrash = async () => {
+    const isConfirmed = window.confirm(`Move ${selectedIds.length} transactions to the Trash Bin?`);
+    if (!isConfirmed) return;
+
     for (const id of selectedIds) {
-      await fetch(`http://localhost:5000/api/transaction/${id}`, { method: 'DELETE' });
+      await fetch(`http://localhost:5000/api/transaction/${id}/archive`, { method: 'PUT' });
     }
     setSelectedIds([]);
-    fetchTransactions();
+    fetchTransactions(searchQuery, dateFilter, viewMode);
   };
 
-  const handleDeleteAll = async () => {
-    try {
-        const response = await fetch(`http://localhost:5000/api/transaction/all`, { 
-            method: 'DELETE',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ password: deletePassword })
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-            alert(data.message); 
-            setIsDeleteAllModalOpen(false);
-            setDeletePassword('');
-            fetchTransactions(); 
-        } else {
-            alert("Error: " + (data.error || "Unknown error"));
-        }
-    } catch (err) {
-        console.error("Fetch failed:", err);
-        alert("Failed to connect to the server.");
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('activeEmployee');
+    window.location.href = '/login'; 
   };
 
   const handleRibbonNavigation = (menuName) => {
@@ -176,9 +153,7 @@ function Transaction({ onLogout }) {
       
       <nav style={styles.topNavbar}>
         <div style={styles.navBrandBlock}>
-          {/* Replace the emoji div with this img tag */}
           <img src={CeeStemLogo} alt="CeeStem Logo" style={styles.brandLogo} />
-          
           <div style={styles.brandTextGroup}>
             <span style={styles.brandMainTitle}>CeeStem</span>
             <span style={styles.brandSubTitle}>WATER REFILLING</span>
@@ -203,6 +178,11 @@ function Transaction({ onLogout }) {
               </button>
             );
           })}
+          
+          <div style={styles.navDivider}></div>
+          <button onClick={handleLogout} style={styles.signOutButton}>
+            <LogOut size={16} /> Sign Out
+          </button>
         </div>
       </nav>
 
@@ -237,19 +217,44 @@ function Transaction({ onLogout }) {
               </div>
             </div>
 
-            <button 
-              onClick={() => setIsDeleteAllModalOpen(true)}
-              style={{...styles.addTransactionPrimaryActionButton, borderColor: '#ef4444', color: '#ef4444'}}
-            >
-              <Trash2 size={16} /> Clear All
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Notice Tooltip applied here on the active view */}
+              {viewMode === 'Active' && (
+                <div 
+                  style={styles.tooltipWrapper}
+                  onMouseEnter={() => setShowNoticeTooltip(true)}
+                  onMouseLeave={() => setShowNoticeTooltip(false)}
+                >
+                  <Info size={20} color="#0077b6" style={{ cursor: 'pointer' }} />
+                  {showNoticeTooltip && (
+                    <div style={styles.tooltipBox}>
+                      Valid logs auto-delete after 5 years.
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <button 
+                onClick={() => setViewMode(viewMode === 'Active' ? 'Trash' : 'Active')} 
+                style={{...styles.archiveToggleBtn, backgroundColor: viewMode === 'Trash' ? '#fee2e2' : '#ffffff', color: viewMode === 'Trash' ? '#b91c1c' : '#475569', borderColor: viewMode === 'Trash' ? '#fca5a5' : '#cbd5e1'}}
+              >
+                <Trash size={16} /> {viewMode === 'Active' ? 'View Trash Bin' : 'Back to Active'}
+              </button>
+            </div>
           </div>
 
-          {selectedIds.length > 0 && (
+          {viewMode === 'Trash' && (
+            <div style={styles.trashNoticeBanner}>
+               <Info size={18} />
+               <span><strong>Notice:</strong> Transactions in the Trash Bin are permanently deleted automatically after 90 days.</span>
+            </div>
+          )}
+
+          {selectedIds.length > 0 && viewMode === 'Active' && (
             <div style={styles.batchActionAlertStrip}>
               <span style={styles.batchSelectionCountLabel}>{selectedIds.length} Selected</span>
               <div style={{ display: 'flex', gap: '12px' }}>
-                <button onClick={handleBatchDelete} style={styles.batchDeleteActionButton}>Delete Selected</button>
+                <button onClick={handleBatchTrash} style={styles.batchDeleteActionButton}>Move to Trash</button>
                 <button onClick={() => setSelectedIds([])} style={styles.batchCancelActionButton}>Cancel</button>
               </div>
             </div>
@@ -259,6 +264,11 @@ function Transaction({ onLogout }) {
             <table style={styles.ledgerTableMarkup}>
               <thead>
                 <tr style={styles.tableHeadBorderRow}>
+                  {viewMode === 'Active' && (
+                     <th style={{ ...styles.tableHeaderColumnCell, width: '40px', paddingLeft: '16px' }}>
+                       <input type="checkbox" onChange={handleSelectAll} checked={selectedIds.length === dbTransactions.length && dbTransactions.length > 0} />
+                     </th>
+                  )}
                   <th style={{ ...styles.tableHeaderColumnCell, width: '60px' }}>ID</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '170px' }}>DATE</th>
                   <th style={{ ...styles.tableHeaderColumnCell, width: '130px' }}>CUSTOMER</th>
@@ -274,6 +284,11 @@ function Transaction({ onLogout }) {
               <tbody>
                 {dbTransactions.map((tx, index) => (
                   <tr key={index} style={styles.tableBodyDataRow}>
+                    {viewMode === 'Active' && (
+                       <td style={{ ...styles.tableBodyCellBlock, paddingLeft: '16px' }}>
+                         <input type="checkbox" checked={selectedIds.includes(tx.Trans_ID)} onChange={() => handleSelectRow(tx.Trans_ID)} />
+                       </td>
+                    )}
                     <td style={styles.tableBodyCellBlock}>{tx.Trans_ID}</td>
                     <td style={styles.tableBodyCellBlock}>{tx.date}</td>
                     <td style={styles.tableBodyCellBlock}>{tx.customer}</td>
@@ -282,11 +297,60 @@ function Transaction({ onLogout }) {
                     <td style={styles.tableBodyCellBlock}>{tx.qty}</td>
                     <td style={{ ...styles.tableBodyCellBlock, fontWeight: '700' }}>₱{tx.amount.toFixed(2)}</td>
                     <td style={styles.tableBodyCellBlock}>{tx.service}</td>
-                    <td style={styles.tableBodyCellBlock}>{tx.status}</td>
+                    <td style={styles.tableBodyCellBlock}>
+                      {/* Inline Status Edit Dropdown */}
+                      {editingRowId === tx.Trans_ID ? (
+                        <select 
+                          value={editingStatus} 
+                          onChange={(e) => setEditingStatus(e.target.value)}
+                          style={styles.inlineStatusEditSelect}
+                        >
+                          <option value="Paid">Paid</option>
+                          <option value="Unpaid">Unpaid</option>
+                        </select>
+                      ) : (
+                        <span style={{ 
+                          color: tx.status?.toLowerCase() === 'unpaid' ? '#ef4444' : '#16a34a',
+                          fontWeight: '600'
+                        }}>
+                          {tx.status}
+                        </span>
+                      )}
+                    </td>
                     <td style={styles.tableBodyCellBlock}>
                       <div style={styles.inlineActionButtonsFlexGroup}>
-                        <button onClick={() => openEditModal(tx)} style={styles.inlineRowEditButton}><Edit2 size={16} /></button>
-                        <button onClick={() => handleInlineDelete(tx.Trans_ID)} style={styles.inlineRowDeleteButton}><Trash2 size={16} /></button>
+                        {viewMode === 'Active' ? (
+                           <>
+                             {/* Toggles between Edit/Save based on editingRowId */}
+                             {editingRowId === tx.Trans_ID ? (
+                                <>
+                                  <button onClick={() => handleSaveStatus(tx.Trans_ID)} style={styles.inlineRowSaveButton} title="Save Status">
+                                    <Check size={16} />
+                                  </button>
+                                  <button onClick={() => setEditingRowId(null)} style={styles.inlineRowCancelButton} title="Cancel">
+                                    <X size={16} />
+                                  </button>
+                                </>
+                             ) : (
+                                <>
+                                  <button 
+                                    onClick={() => { setEditingRowId(tx.Trans_ID); setEditingStatus(tx.status); }} 
+                                    style={styles.inlineRowEditButton} 
+                                    title="Edit Status"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  <button onClick={() => handleMoveToTrash(tx.Trans_ID)} style={styles.inlineRowDeleteButton} title="Move to Trash">
+                                    <Trash2 size={16} />
+                                  </button>
+                                </>
+                             )}
+                           </>
+                        ) : (
+                           <button onClick={() => handleRestore(tx.Trans_ID)} style={styles.inlineRowRestoreButton} title="Restore Transaction">
+                             <RotateCcw size={16} /> Restore
+                           </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -296,144 +360,6 @@ function Transaction({ onLogout }) {
           </div>
         </div>
       </div>
-
-      {isEditModalOpen && editingTransaction && (
-        <div style={styles.modalOverlayMask}>
-          <div style={styles.modalWindowContainer}>
-            <div style={styles.modalHeaderRow}>
-              <div style={styles.modalHeaderTitleGroup}>
-                <div style={{ ...styles.modalHeaderTitleIconBox, width: '30px', display: 'flex', alignItems: 'center', color: '#0077b6' }}>
-                  <Edit2 size={20} />
-                </div>
-                <h2 style={styles.modalHeaderHeadingText}>EDIT TRANSACTION</h2>
-              </div>
-              <button style={styles.modalHeaderCloseXButton} onClick={() => setIsEditModalOpen(false)}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <form onSubmit={handleModalSave} style={styles.modalContentFormElement}>
-              <div style={styles.modalFormInputFieldsDoubleColumnGrid}>
-                
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>TRANS ID</label>
-                  <input type="text" value={editingTransaction.Trans_ID} disabled style={styles.modalDisabledInputField} />
-                </div>
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>CUSTOMER NAME</label>
-                  <input type="text" value={editingTransaction.customer} disabled style={styles.modalDisabledInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>REFILLER</label>
-                  <input type="text" value={editingTransaction.refiller} disabled style={styles.modalDisabledInputField} />
-                </div>
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>DRIVER</label>
-                  <input type="text" value={editingTransaction.driver} disabled style={styles.modalDisabledInputField} />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>SERVICE</label>
-                  <div style={styles.modalSelectFieldWrapperBox}>
-                    <select 
-                      value={editingTransaction.service} 
-                      onChange={(e) => {
-                        const newService = e.target.value;
-                        const fixedPrice = newService === 'Delivery' ? 35 : 30;
-                        setEditingTransaction({...editingTransaction, service: newService, amount: fixedPrice});
-                      }}
-                      style={styles.modalNativeDropdownSelect}
-                    >
-                      <option value="Delivery">Delivery</option>
-                      <option value="Walk-in">Walk-in</option>
-                    </select>
-                    <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
-                  </div>
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>QUANTITY</label>
-                  <input 
-                    type="number" 
-                    value={editingTransaction.qty} 
-                    onChange={(e) => {
-                      const newQty = Math.max(1, parseInt(e.target.value) || 1);
-                      setEditingTransaction({...editingTransaction, qty: newQty});
-                    }}
-                    style={styles.modalActiveInputField} 
-                  />
-                </div>
-
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>PRICE</label>
-                  <input type="text" value={`₱${editingTransaction.amount.toFixed(2)}`} disabled style={styles.modalDisabledInputField} />
-                </div>
-                <div style={styles.modalFormInputGroupFieldUnit}>
-                  <label style={styles.modalFormFieldLabelHeader}>STATUS</label>
-                  <div style={styles.modalSelectFieldWrapperBox}>
-                    <select value={editingTransaction.status} onChange={(e) => setEditingTransaction({...editingTransaction, status: e.target.value})} style={styles.modalNativeDropdownSelect}>
-                      <option value="Paid">PAID</option>
-                      <option value="Unpaid">UNPAID</option>
-                    </select>
-                    <ChevronDown size={16} color="#0077b6" style={styles.modalSelectChevronOverlayIcon} />
-                  </div>
-                </div>
-              </div>
-
-              <div style={styles.modalFooterButtonsControlFlexRow}>
-                <button type="button" onClick={() => setIsEditModalOpen(false)} style={styles.modalDismissCancelButtonLink}>
-                  Cancel
-                </button>
-                <button type="submit" style={styles.modalPrimaryActionSaveButton}>
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {isDeleteAllModalOpen && (
-        <div style={styles.modalOverlayMask}>
-          <div style={styles.modalWindowContainer}>
-            
-            <div style={styles.modalHeaderTitleGroup}>
-              <span>⚠️</span> 
-              <h2 style={styles.modalHeaderHeadingText}>DELETE ALL RECORDS</h2>
-            </div>
-
-            <p style={{ color: '#475569', margin: '0' }}>
-              This action is irreversible. Please enter the owner password to confirm:
-            </p>
-            
-            <input 
-              type="text" 
-              value={deletePassword} 
-              onChange={(e) => setDeletePassword(e.target.value)} 
-              style={{
-                ...styles.modalActiveInputField,
-                WebkitTextSecurity: 'disc' 
-              }}
-              name="admin-secret-code"
-              id="admin-secret-code"
-              autoComplete="off"
-              placeholder="Enter Admin Password"
-              readOnly
-              onFocus={(e) => e.target.removeAttribute('readOnly')}
-            />
-            
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
-              <button onClick={handleDeleteAll} style={styles.modalDangerActionDeleteButton}>
-                Confirm Delete
-              </button>
-              <button onClick={() => setIsDeleteAllModalOpen(false)} style={styles.modalDismissCancelButtonLink}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -443,12 +369,14 @@ const styles = {
   appContainer: { display: 'flex', flexDirection: 'column', height: '100vh', width: '100vw', backgroundColor: '#ffffff', overflow: 'hidden', position: 'fixed', top: 0, left: 0, boxSizing: 'border-box', fontFamily: 'sans-serif' },
   topNavbar: { height: '70px', backgroundColor: '#011627', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 30px', boxSizing: 'border-box', flexShrink: 0 },
   navBrandBlock: { display: 'flex', alignItems: 'center', gap: '10px' },
-  brandIconContainer: { fontSize: '1.4rem' },
   brandTextGroup: { display: 'flex', flexDirection: 'column', textAlign: 'left' },
   brandMainTitle: { color: '#ffffff', fontSize: '1.15rem', fontWeight: 'bold', letterSpacing: '0.3px' },
   brandSubTitle: { color: '#00b4d8', fontSize: '0.68rem', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '1px' },
   navMenuLinksRow: { display: 'flex', height: '100%', alignItems: 'center', gap: '4px' },
   navMenuButton: { background: 'none', border: 'none', height: '100%', padding: '0 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.15s ease' },
+  navDivider: { width: '2px', height: '24px', backgroundColor: '#00b4d8', margin: '0 10px', opacity: 0.5 },
+  signOutButton: { backgroundColor: '#ef4444', border: 'none', borderRadius: '6px', height: '36px', padding: '0 16px', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s ease', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.2)' },
+  archiveToggleBtn: { border: '1px solid #cbd5e1', color: '#475569', borderRadius: '8px', padding: '12px 16px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s' },
   workspaceBodyWrapper: { flex: 1, overflowY: 'auto', backgroundColor: '#e6f2fa', padding: '20px ', boxSizing: 'border-box', display: 'flex', flexDirection: 'column' },
   dataLogTableCanvasCard: { backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid #bde0fe', padding: '30px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', boxShadow: '0 4px 20px rgba(0, 79, 134, 0.05)', height: 'calc(100vh - 110px)', width: '100%', overflow: 'hidden' },
   tableControlsGridRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', gap: '20px', width: '100%', boxSizing: 'border-box' },
@@ -458,7 +386,9 @@ const styles = {
   dropdownSelectContainer: { position: 'relative', display: 'flex', alignItems: 'center' },
   nativeCustomSelect: { appearance: 'none', backgroundColor: '#eaf4fc', border: '1px solid #bde0fe', borderRadius: '8px', padding: '12px 40px 12px 18px', fontSize: '0.92rem', fontWeight: '600', color: '#014f86', outline: 'none', cursor: 'pointer' },
   dropdownChevronOverlay: { position: 'absolute', right: '14px', pointerEvents: 'none' },
-  addTransactionPrimaryActionButton: { backgroundColor: '#ffffff', color: '#0077b6', border: '1px solid #0077b6', borderRadius: '8px', padding: '12px 20px', fontSize: '0.92rem', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' },
+  
+  trashNoticeBanner: { display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#fff8f1', borderLeft: '4px solid #f97316', padding: '12px 20px', borderRadius: '4px', color: '#9a3412', marginBottom: '20px', fontSize: '0.9rem' },
+
   batchActionAlertStrip: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffe3e3', border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px 20px', marginBottom: '20px', width: '100%', boxSizing: 'border-box' },
   batchSelectionCountLabel: { color: '#b91c1c', fontWeight: '700', fontSize: '0.95rem' },
   batchDeleteActionButton: { backgroundColor: '#ef4444', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '8px 16px', fontSize: '0.88rem', fontWeight: '700', cursor: 'pointer' },
@@ -470,28 +400,16 @@ const styles = {
   tableBodyDataRow: { borderBottom: '1px solid #e2e8f0', height: '52px' },
   tableBodyCellBlock: { padding: '12px 10px', fontSize: '0.9rem', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' },
   inlineActionButtonsFlexGroup: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' },
-  inlineRowEditButton: { backgroundColor: '#eaf4fc', border: 'none', borderRadius: '6px', color: '#0077b6', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' },
-  modalOverlayMask: { position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 },
-  modalWindowContainer: { backgroundColor: '#ffffff', width: '90%', maxWidth: '500px', borderRadius: '12px', border: '1px solid #0077b6', padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' },
-  modalHeaderRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', width: '100%' },
-  modalHeaderTitleGroup: { display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #bde0fe', paddingBottom: '15px' },
-  modalHeaderTitleIconBox: { fontSize: '1.5rem' },
-  modalHeaderHeadingText: { fontSize: '1.25rem', fontWeight: '700', color: '#011627', margin: 0 },
-  modalHeaderCloseXButton: { background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px' },
-  modalContentFormElement: { display: 'flex', flexDirection: 'column', width: '100%' },
-  modalFormInputFieldsDoubleColumnGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px 24px', marginBottom: '32px', width: '100%' },
-  modalFormInputGroupFieldUnit: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start', width: '100%' },
-  modalFormFieldLabelHeader: { fontSize: '0.85rem', fontWeight: '800', color: '#011627', marginBottom: '10px', letterSpacing: '0.3px' },
-  modalDisabledInputField: { width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #bde0fe', backgroundColor: '#d0e4f2', color: '#64748b', fontSize: '0.98rem', outline: 'none', boxSizing: 'border-box', fontWeight: '600' },
-  modalActiveInputField: { width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #0077b6', backgroundColor: '#ffffff', color: '#012a4a', fontSize: '0.98rem', outline: 'none', boxSizing: 'border-box', fontWeight: '600' },
-  modalSelectFieldWrapperBox: { position: 'relative', display: 'flex', alignItems: 'center', width: '100%' },
-  modalNativeDropdownSelect: { appearance: 'none', width: '100%', padding: '14px 16px', borderRadius: '10px', border: '1px solid #0077b6', backgroundColor: '#ffffff', color: '#012a4a', fontSize: '0.98rem', fontWeight: '700', outline: 'none', cursor: 'pointer', boxSizing: 'border-box' },
-  modalSelectChevronOverlayIcon: { position: 'absolute', right: '16px', pointerEvents: 'none' },
-  modalFooterButtonsControlFlexRow: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '14px', width: '100%' },
-  modalDangerActionDeleteButton: { backgroundColor: '#fca5a5', color: '#b91c1c', border: '1px solid #f87171', borderRadius: '10px', padding: '14px 28px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', marginRight: 'auto' },
-  modalDismissCancelButtonLink: { background: 'none', border: 'none', color: '#0077b6', fontWeight: '700', fontSize: '0.98rem', cursor: 'pointer', padding: '14px 20px' },
-  modalPrimaryActionSaveButton: { backgroundColor: '#0077b6', color: '#ffffff', border: 'none', borderRadius: '10px', padding: '14px 32px', fontSize: '0.98rem', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0, 119, 182, 0.25)' }
+  inlineRowDeleteButton: { backgroundColor: '#ffe3e3', border: 'none', borderRadius: '6px', color: '#ef4444', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
+  inlineRowRestoreButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', padding: '6px 12px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' },
+  
+  // New Styles added for the inline edit and tooltip
+  inlineRowEditButton: { backgroundColor: '#e0f2fe', border: 'none', borderRadius: '6px', color: '#0284c7', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
+  inlineRowSaveButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
+  inlineRowCancelButton: { backgroundColor: '#f1f5f9', border: 'none', borderRadius: '6px', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
+  inlineStatusEditSelect: { padding: '6px', borderRadius: '4px', border: '1px solid #0ea5e9', outline: 'none', fontSize: '0.85rem', color: '#0f172a' },
+  tooltipWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
+  tooltipBox: { position: 'absolute', right: '0', top: '130%', backgroundColor: '#1e293b', color: '#ffffff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 100, pointerEvents: 'none' }
 };
 
 export default Transaction;
