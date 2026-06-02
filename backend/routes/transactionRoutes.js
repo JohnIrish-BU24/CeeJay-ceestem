@@ -6,6 +6,7 @@ const transactionController = require('../controllers/transactionController');
 router.get('/', transactionController.getTransactionHistory);
 router.post('/', transactionController.createTransaction);
 router.put('/:id', transactionController.updateTransaction);
+router.put('/:id/status', transactionController.updateTransaction);
 router.get('/today', transactionController.getTodayTransactions);
 router.get('/check-customer/:custID', transactionController.checkCustomerExists);
 

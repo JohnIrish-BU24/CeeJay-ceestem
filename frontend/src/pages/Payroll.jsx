@@ -1,7 +1,7 @@
 import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, ChevronDown, Plus, X, Eye, Archive, RotateCcw, CheckSquare, Info, Printer, Filter, LogOut } from 'lucide-react';
+import { Search, ChevronDown, Plus, X, Eye, Archive, RotateCcw, CheckSquare, Info, Printer, LogOut } from 'lucide-react';
 
 function Payroll() {
   const navigate = useNavigate();
@@ -214,7 +214,6 @@ function Payroll() {
               </div>
 
               <div style={styles.roleFilterBox}>
-                <Filter size={16} color="#0077b6" />
                 <select 
                   value={roleFilter} 
                   onChange={(e) => setRoleFilter(e.target.value)}

@@ -217,13 +217,24 @@ exports.createTransaction = async (req, res) => {
 
 // Update strictly reserved for Status (Paid/Unpaid)
 exports.updateTransaction = async (req, res) => {
-    const { id } = req.params; 
-    const form = req.body;     
-    
+    const { id } = req.params;
+    const form = req.body;
+
+    // Guard: validate the incoming value before touching it
+    const rawStatus = form.status;
+    if (!rawStatus) {
+        return res.status(400).json({ error: "Missing 'status' field in request body." });
+    }
+
+    const newStatus = rawStatus.charAt(0).toUpperCase() + rawStatus.slice(1);
+
+    if (!['Paid', 'Unpaid'].includes(newStatus)) {
+        return res.status(400).json({ error: `Invalid status value: '${newStatus}'. Must be 'Paid' or 'Unpaid'.` });
+    }
+
     try {
-        const newStatus = form.status.charAt(0).toUpperCase() + form.status.slice(1);
         await db.query(
-            'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?', 
+            'UPDATE TRANS_RECORD SET Remarks = ? WHERE Trans_ID = ?',
             [newStatus, id]
         );
         res.json({ message: "Transaction payment status updated" });

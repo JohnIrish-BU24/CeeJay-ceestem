@@ -69,25 +69,25 @@ function Transaction() {
     }
   };
   
-  // NEW: Save Status Handler
-  const handleSaveStatus = async (Trans_ID) => {
+  // REPLACE the entire handleSaveStatus function with this
+const handleSaveStatus = async (Trans_ID) => {
     try {
-        // Adjust this endpoint if your backend route for updating status is named differently.
-        // I am passing the status as "Remarks" based on your mapping.
         const response = await fetch(`http://localhost:5000/api/transaction/${Trans_ID}/status`, { 
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ Remarks: editingStatus })
+            body: JSON.stringify({ status: editingStatus })  // ✅ was: { Remarks: editingStatus }
         });
         
         if (response.ok) {
             setEditingRowId(null);
             fetchTransactions(searchQuery, dateFilter, viewMode); 
         } else {
-            const errorData = await response.json();
-            alert("Failed to update status: " + (errorData.error || "Unknown error"));
+            const err = await response.json();
+            alert("Failed to update status: " + (err.error || "Unknown error")); // ✅ was: errorData.error
         }
-    } catch (err) { console.error("Network error:", err); }
+    } catch (err) { 
+        console.error("Network error:", err); 
+    }
   };
 
   const handleMoveToTrash = async (Trans_ID) => {
@@ -408,7 +408,7 @@ const styles = {
   inlineRowEditButton: { backgroundColor: '#e0f2fe', border: 'none', borderRadius: '6px', color: '#0284c7', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
   inlineRowSaveButton: { backgroundColor: '#dcfce7', border: 'none', borderRadius: '6px', color: '#16a34a', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
   inlineRowCancelButton: { backgroundColor: '#f1f5f9', border: 'none', borderRadius: '6px', color: '#64748b', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: '0.2s' },
-  inlineStatusEditSelect: { padding: '6px', borderRadius: '4px', border: '1px solid #0ea5e9', outline: 'none', fontSize: '0.85rem', color: '#0f172a' },
+  inlineStatusEditSelect: { width: '100%', padding: '6px', borderRadius: '4px', border: '1px solid #0ea5e9', outline: 'none', fontSize: '0.85rem', color: '#0f172a' },
   tooltipWrapper: { position: 'relative', display: 'flex', alignItems: 'center' },
   tooltipBox: { position: 'absolute', right: '0', top: '130%', backgroundColor: '#1e293b', color: '#ffffff', padding: '8px 12px', borderRadius: '6px', fontSize: '0.75rem', width: '220px', textAlign: 'center', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', zIndex: 100, pointerEvents: 'none' }
 };
