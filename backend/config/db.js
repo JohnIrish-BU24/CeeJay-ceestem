@@ -1,15 +1,19 @@
-const mysql = require('mysql2');
+const mysql = require('mysql2/promise');
+require('dotenv').config();
 
-const pool = mysql.createPool({
-    host: 'localhost',
-    port: 3307,             // <-- Add this line (Change to 3307 if XAMPP shows 3307)
-    user: 'root',
-    password: '',           
-    database: 'db_ceestem', // Ensure this matches your phpMyAdmin spelling exactly
+const db = mysql.createPool({
+    // Add the Railway default variables as fallbacks using the || operator
+    host: process.env.DB_HOST || process.env.MYSQLHOST,
+    user: process.env.DB_USER || process.env.MYSQLUSER,
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD,
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE,
+    port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0,
-    multipleStatements: true
+    ssl: {
+        rejectUnauthorized: false
+    }
 });
 
-module.exports = pool.promise();
+module.exports = db;

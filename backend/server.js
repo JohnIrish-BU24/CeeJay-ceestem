@@ -4,11 +4,27 @@ require('dotenv').config();
 
 const app = express();
 
-// Middleware configurations
-app.use(cors());
+// CORS Configuration - Allow your future frontend website and local testing envs
+const allowedOrigins = [
+  'http://localhost:5173', 
+  'http://localhost:3000',
+  'https://ceestem.vercel.app' // Replace with your actual Vercel link once deployed
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      callback(new Error('Blocked by CORS Security Policy'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
-// Import individual route engines
+// Import individual route engines (Ensuring exact lower-case match for Linux hosting compatibility)
 const barangayRoutes = require('./routes/barangayRoutes');
 const customerRoutes = require('./routes/customerRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
