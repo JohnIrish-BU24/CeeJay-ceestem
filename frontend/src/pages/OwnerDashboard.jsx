@@ -1,4 +1,4 @@
-import CeeStemLogo from '../assets/CeesTem.png';
+import CeeStemLogo from '../assets/CeeStem.png';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Activity, Clock, Droplet, ArrowRight, FileText, CheckCircle, Truck, Users, Link, History, Wallet, UserCheck, PieChart, TrendingUp, Package, LogOut } from 'lucide-react';
