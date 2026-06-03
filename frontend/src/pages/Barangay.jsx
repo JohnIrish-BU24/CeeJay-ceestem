@@ -22,7 +22,7 @@ function Barangay({ onLogout }) {
 
   const fetchBarangayRecords = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/barangay?status=${viewMode}`);
+      const response = await fetch(`https://ceejay-ceestem.onrender.com/api/barangay?status=${viewMode}`);
       const rawData = await response.json();
       
       const filteredData = searchPhrase 
@@ -45,7 +45,7 @@ function Barangay({ onLogout }) {
   const handleAddNewBarangaySubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch('http://localhost:5000/api/barangay', {
+      const response = await fetch('https://ceejay-ceestem.onrender.com/api/barangay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newBarangayDetails)
@@ -66,7 +66,7 @@ function Barangay({ onLogout }) {
   const handleSaveBarangayEdits = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`http://localhost:5000/api/barangay/${draftBarangayEdits.Barangay_ID}`, {
+      const response = await fetch(`https://ceejay-ceestem.onrender.com/api/barangay/${draftBarangayEdits.Barangay_ID}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -89,7 +89,7 @@ function Barangay({ onLogout }) {
   const handleArchive = async (identifier) => {
     if (!window.confirm("Archive this Barangay?")) return;
     try {
-      const response = await fetch(`http://localhost:5000/api/barangay/${identifier}/archive`, { method: 'PUT' });
+      const response = await fetch(`https://ceejay-ceestem.onrender.com/api/barangay/${identifier}/archive`, { method: 'PUT' });
       if (response.ok) {
         fetchBarangayRecords();
       }
@@ -100,7 +100,7 @@ function Barangay({ onLogout }) {
 
   const handleRestore = async (identifier) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/barangay/${identifier}/restore`, { method: 'PUT' });
+      const response = await fetch(`https://ceejay-ceestem.onrender.com/api/barangay/${identifier}/restore`, { method: 'PUT' });
       if (response.ok) { fetchBarangayRecords(); }
     } catch (err) { console.error("Restore error:", err); }
   };
@@ -108,7 +108,7 @@ function Barangay({ onLogout }) {
   const handleBatchArchive = async () => {
     if (!window.confirm(`Archive ${selectedBarangayIdentifiers.length} barangays?`)) return;
     for (const id of selectedBarangayIdentifiers) {
-      await fetch(`http://localhost:5000/api/barangay/${id}/archive`, { method: 'PUT' });
+      await fetch(`https://ceejay-ceestem.onrender.com/api/barangay/${id}/archive`, { method: 'PUT' });
     }
     setSelectedBarangayIdentifiers([]);
     fetchBarangayRecords();
@@ -117,7 +117,7 @@ function Barangay({ onLogout }) {
   const handleBatchRestore = async () => {
     if (!window.confirm(`Restore ${selectedBarangayIdentifiers.length} barangays?`)) return;
     for (const id of selectedBarangayIdentifiers) {
-      await fetch(`http://localhost:5000/api/barangay/${id}/restore`, { method: 'PUT' });
+      await fetch(`https://ceejay-ceestem.onrender.com/api/barangay/${id}/restore`, { method: 'PUT' });
     }
     setSelectedBarangayIdentifiers([]);
     fetchBarangayRecords();
